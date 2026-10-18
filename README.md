@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://github.com/StrayDragon/dsh-x-magpie"><img src="assets/icon.svg" width="112" alt="dsh-x-magpie 图标:深色圆角底上的 magpie 鹊鸟,右下角为青色同步徽标"></a>
+<a href="https://github.com/StrayDragon/dsh-x-magpie"><img src="assets/icon.png" width="112" alt="dsh-x-magpie 图标:鲸鱼与鹊鸟在环形箭头间同步"></a>
 
 # dsh-x-magpie
 
@@ -182,7 +182,7 @@ dsh-x-magpie/
 │   └── dsh-client-env.d.ts
 ├── scripts/             # build.ts 构建入口;smoke.mjs 行为冒烟;release.ts 发版
 ├── dist/                # 构建产物(git 不入库):index.js / client.js / types/
-├── assets/              # 静态资源:icon.svg + locale/*.json(插件名与描述)
+├── assets/              # 静态资源:icon.png + locale/*.json(插件名与描述)
 ├── package.json         # bundle 清单:dsh.bundle.patch + dsh.client 声明
 ├── cordis.patch.yml     # 插入 dsh-x-magpie 行,携带默认 config
 └── .github/workflows/   # ci.yml 质量门;release.yml 打 tag → tarball → GitHub Release
@@ -212,4 +212,4 @@ The settings page handles the rest: gateway URL and key, per-model selection (al
 
 MIT,见 [LICENSE](LICENSE)。
 
-插件图标组合了 [magpie](https://github.com/yetone/magpie) 的鹊鸟标志(`assets/icon.svg`,MIT,© yetone)与同步徽标,署名保留于此。
+插件图标为原创手绘:鲸鱼代表 dsh,鹊鸟代表 magpie,环形箭头表示模型目录同步。

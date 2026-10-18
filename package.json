@@ -4,7 +4,7 @@
   "description": "Pull the model catalog of a magpie gateway into a dsh llm-pi-ai provider route, with a reviewed diff before any write.",
   "license": "MIT",
   "type": "module",
-  "icon": "./assets/icon.svg",
+  "icon": "./assets/icon.png",
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
@@ -12,7 +12,7 @@
     },
     "./client": "./dist/client.js",
     "./assets/locale/*.json": "./assets/locale/*.json",
-    "./icon": "./assets/icon.svg"
+    "./icon": "./assets/icon.png"
   },
   "files": [
     "dist/index.js",
@@ -22,7 +22,7 @@
     "src/*.ts",
     "cordis.patch.yml",
     "assets/locale/*.json",
-    "assets/icon.svg"
+    "assets/icon.png"
   ],
   "dsh": {
     "bundle": {
