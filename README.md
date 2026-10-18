@@ -37,6 +37,9 @@
 - 模型勾选:默认全选;取消勾选的模型不写入路由。
 - 同步失败时保留上一次的路由,错误原因显示在页面上。
 
+<img width="1092" height="1028" alt="image" src="https://github.com/user-attachments/assets/5b125df7-25fa-468b-9379-1afcf78960e1" />
+
+
 ## 安装
 
 ### 方式一:从 GitHub 克隆(推荐)
