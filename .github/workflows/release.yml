@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  tarball:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Full gate before packaging
+        run: |
+          bun install --frozen-lockfile
+          bun run typecheck
+          bun run build
+          bun scripts/smoke.mjs
+
+      - name: Pack installable tarball
+        id: pack
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          bun pm pack --filename "dsh-x-magpie-$VERSION.tgz" --quiet
+          echo "file=dsh-x-magpie-$VERSION.tgz" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Tarball version matches the tag
+        run: |
+          packed=$(tar -xOf "${{ steps.pack.outputs.file }}" package/package.json | bun -e 'const j=await Bun.stdin.json();console.log(j.version)')
+          test "$packed" = "${{ steps.pack.outputs.version }}"
+
+      - name: Create the GitHub Release with the tarball
+        uses: softprops/action-gh-release@v2
+        with:
+          name: dsh-x-magpie ${{ steps.pack.outputs.version }}
+          body: |
+            Install without building anything:
+
+            ```
+            dsh plugin --profile <name> add ./dsh-x-magpie-${{ steps.pack.outputs.version }}.tgz
+            ```
+
+            After the download, the `.tgz` needs no build-script approval — the artifact ships prebuilt.
+          files: ${{ steps.pack.outputs.file }}
+          fail_on_unmatched_files: true
