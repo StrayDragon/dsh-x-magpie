@@ -1,7 +1,8 @@
-window.__dshXMagpieLoader = { require: (spec) => require(spec) };
-var __dshRequire = window.__dshXMagpieLoader.require;
-"use strict";
-var __dshXMagpieCore = (() => {
+window.__ModuleLoader__.load({
+	id: '@straydragon/dsh-x-magpie',
+	factory: (require) => {
+	var __dshRequire = require;
+
   var __defProp = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
   var __getOwnPropNames = Object.getOwnPropertyNames;
@@ -629,9 +630,13 @@ select.dms-input { font-family: inherit; }
     }
   };
   var client_core_default = plugin;
-  return __toCommonJS(client_core_exports);
-})();
-window.__ModuleLoader__.load({
-	id: '@straydragon/dsh-x-magpie',
-	factory: () => __dshXMagpieCore?.default ?? __dshXMagpieCore,
+
+	// esbuild's __toESM interop nests our default export once more when the
+	// module has the __esModule marker; unwrap until the plugin surfaces.
+	let __dshPlugin = client_core_exports;
+	while (__dshPlugin && typeof __dshPlugin === 'object' && 'default' in __dshPlugin && __dshPlugin.inject === undefined) {
+		__dshPlugin = __dshPlugin.default;
+	}
+	return __dshPlugin;
+	},
 });

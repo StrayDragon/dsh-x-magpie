@@ -3,6 +3,23 @@ const React = (typeof __dshRequire === 'function' ? __dshRequire('react') : (glo
 const h = React.createElement;
 const { useState, useEffect, useCallback, useRef } = React;
 
+/** Loader surface types (client half). */
+interface SlotRegistration {
+	display?: string;
+	name: string;
+	id: string;
+	order?: number;
+	label?: string | (() => string);
+}
+
+interface SlotsContext {
+	slots: {
+		inject(owner: string, build: () => (() => void) | void): void;
+		register(options: SlotRegistration, component: unknown): () => void;
+	};
+}
+
+
 const STRINGS = {
 	en: {
 		title: 'Magpie model sync',
