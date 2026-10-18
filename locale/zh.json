@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Magpie 模型同步",
+    "description": "把 magpie 网关的模型目录拉取为一个 llm-pi-ai provider 路由,写盘前先展示差异供确认。"
+  }
+}

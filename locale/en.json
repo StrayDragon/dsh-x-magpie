@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Magpie Model Sync",
+    "description": "Pulls the model catalog of a magpie gateway into one llm-pi-ai provider route, with a reviewed diff before any write."
+  }
+}
