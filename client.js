@@ -1,4 +1,4 @@
-// Client half of dsh-magpie-sync: a Settings page under `settings.section`.
+// Client half of dsh-x-magpie: a Settings page under `settings.section`.
 //
 // Interaction model: exactly one button — a small refresh control that pulls
 // the gateway catalog and syncs the route. Everything else syncs itself: any
@@ -12,7 +12,7 @@
 // small inline bilingual table (en / zh) keyed off the browser language.
 
 window.__ModuleLoader__.load({
-	id: '@straydragon/dsh-magpie-sync',
+	id: '@straydragon/dsh-x-magpie',
 	factory(require) {
 		const React = require('react');
 		const h = React.createElement;
@@ -108,7 +108,7 @@ window.__ModuleLoader__.load({
 				body === undefined
 					? { method: 'GET' }
 					: { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) };
-			const response = await fetch(`/dsh-magpie-sync${path}`, options);
+			const response = await fetch(`/dsh-x-magpie${path}`, options);
 			const data = await response.json().catch(() => ({}));
 			if (!response.ok || (data && data.error)) {
 				throw new Error(data?.error || `${response.status} ${response.statusText}`);
@@ -650,7 +650,7 @@ select.dms-input { font-family: inherit; }
 					ctx.slots.register(
 						{
 							name: 'settings.section',
-							id: 'magpie-sync',
+							id: 'dsh-x-magpie',
 							order: 60,
 							label: () => translator()('title'),
 						},

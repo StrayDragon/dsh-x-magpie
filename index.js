@@ -1,4 +1,4 @@
-// Host half of dsh-magpie-sync.
+// Host half of dsh-x-magpie.
 //
 // Pulls `GET {gatewayUrl}/v1/models` from a running magpie gateway, maps every
 // row onto a `llm-pi-ai` provider-route entry (id, name, contextWindow,
@@ -20,14 +20,14 @@
 // this bundle free of dsh-internal schema dependencies and version pins.
 // Defaults live in `readConfig` and in the shipped patch.
 
-export const name = 'magpie-sync';
+export const name = 'dsh-x-magpie';
 
 export const inject = ['webServer', 'configEditor', 'credentials'];
 
 const DEFAULTS = {
 	gatewayUrl: 'http://127.0.0.1:3425',
 	routeName: 'magpie',
-	displayName: 'Magpie (from dsh-magpie-sync)',
+	displayName: 'Magpie (from dsh-x-magpie)',
 	credentialRef: 'MAGPIE_GATEWAY_KEY',
 	api: 'openai-responses',
 	modelOverrides: {},
@@ -36,7 +36,7 @@ const DEFAULTS = {
 
 const APIS = new Set(['openai-completions', 'openai-responses', 'anthropic-messages']);
 
-const ROUTE_PREFIX = '/dsh-magpie-sync';
+const ROUTE_PREFIX = '/dsh-x-magpie';
 const LLM_PI_AI_ID = 'llm-pi-ai';
 
 /** pi-ai reasoning level vocabulary; anything else the gateway reports is dropped. */
@@ -470,5 +470,5 @@ export function apply(ctx, config) {
 		}
 	};
 
-	ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: ROUTE_PREFIX, handler }), 'magpie-sync/routes');
+	ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: ROUTE_PREFIX, handler }), 'dsh-x-magpie/routes');
 }
