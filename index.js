@@ -404,8 +404,8 @@ export function apply(ctx, config) {
 											additionalProperties: false,
 											properties: {
 												field: { type: 'string' },
-												from: {},
-												to: {},
+												from: { type: 'string' },
+												to: { type: 'string' },
 											},
 										},
 									},
@@ -425,8 +425,8 @@ export function apply(ctx, config) {
 														additionalProperties: false,
 														properties: {
 															field: { type: 'string' },
-															from: {},
-															to: {},
+															from: { type: 'string' },
+															to: { type: 'string' },
 														},
 													},
 												},
@@ -438,14 +438,67 @@ export function apply(ctx, config) {
 							},
 						},
 					},
+					render: renderToolResult,
 				},
 				execute: async (args) => {
 					const cfg = readConfig(config);
-					if (args?.action === 'apply') return applySync(ctx, cfg);
-					if (args?.action === 'plan') return planSync(ctx, cfg);
-					return { error: 'action must be "plan" or "apply"' };
+					let result;
+					if (args?.action === 'apply') result = await applySync(ctx, cfg);
+					else if (args?.action === 'plan') result = await planSync(ctx, cfg);
+					else return { error: 'action must be "plan" or "apply"' };
+					return projectToolResult(result);
 				},
 			}),
 		'magpie-sync/tool',
 	);
+}
+
+/** Tool results carry a string-only diff shape (tool output schema is
+ * string-typed); the HTTP surface keeps the raw JSON values. */
+function fmtDiffValue(value) {
+	if (value === null || value === undefined) return '(not set)';
+	if (typeof value === 'object') return JSON.stringify(value);
+	return String(value);
+}
+
+function projectToolResult(result) {
+	if (!result?.diff) return result;
+	const field = (change) => ({
+		field: change.field,
+		from: fmtDiffValue(change.from),
+		to: fmtDiffValue(change.to),
+	});
+	return {
+		...result,
+		diff: {
+			route: result.diff.route.map(field),
+			added: result.diff.added,
+			removed: result.diff.removed,
+			changed: result.diff.changed.map((model) => ({
+				id: model.id,
+				fields: model.fields.map(field),
+			})),
+			unchanged: result.diff.unchanged,
+		},
+	};
+}
+
+function renderToolResult(args, value) {
+	if (!value || value.error) return [{ type: 'text', text: `magpie_sync ${args?.action}: ${value?.error ?? 'failed'}` }];
+	const diff = value.diff;
+	const changes = diff.added.length + diff.removed.length + diff.changed.length + diff.route.length;
+	const lines = [`magpie_sync ${args.action}: ${value.routeName} route, ${value.modelCount} model(s), ${changes} change(s)`];
+	if (diff.route.length > 0) {
+		lines.push('route fields:');
+		for (const change of diff.route) lines.push(`  ${change.field}: ${change.from} -> ${change.to}`);
+	}
+	if (diff.added.length > 0) lines.push(`added: ${diff.added.join(', ')}`);
+	if (diff.removed.length > 0) lines.push(`removed: ${diff.removed.join(', ')}`);
+	for (const model of diff.changed) {
+		lines.push(`changed ${model.id}:`);
+		for (const field of model.fields) lines.push(`  ${field.field}: ${field.from} -> ${field.to}`);
+	}
+	lines.push(`unchanged: ${diff.unchanged}`);
+	if (args.action === 'apply' && value.ok) lines.push(`written to llm-pi-ai: ${value.written} model(s)`);
+	return [{ type: 'text', text: lines.join('\n') }];
 }
