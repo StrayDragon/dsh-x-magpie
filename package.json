@@ -1,6 +1,6 @@
 {
   "name": "@straydragon/dsh-magpie-sync",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Pull the model catalog of a magpie gateway into a dsh llm-pi-ai provider route, with a reviewed diff before any write.",
   "license": "MIT",
   "type": "module",

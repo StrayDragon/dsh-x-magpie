@@ -134,3 +134,7 @@ bundle 插入一行(`magpie-sync`);要求 profile 已挂载 `llm-pi-ai`(官方�
 ## License
 
 MIT
+
+## Credits
+
+The plugin icon composes [magpie](https://github.com/yetone/magpie)'s bird logo (build/icon/magpie.svg, MIT, © yetone) with a sync badge.
