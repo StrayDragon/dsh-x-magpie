@@ -59,7 +59,7 @@ Settings → **Magpie model sync**:
 
 1. **Refresh (⟳)** — pulls the catalog, refreshes the model checklist, and syncs the route in one step.
 2. **Everything else self-applies**: config edits, the stored key, and the model selection are debounced, persisted, and written automatically. A failed apply keeps the previous route.
-3. **Model selection** — every model is checked by default; uncheck the ones to leave out of the route (persisted as `exclude`).
+3. **Model selection** — every model is checked by default; uncheck the ones to leave out of the route (persisted as `exclude`). The checklist groups models by their magpie provider and has a fuzzy search over ids.
 
 ### Coexistence notes
 
@@ -116,7 +116,7 @@ bundle 插入一行(`magpie-sync`);要求 profile 已挂载 `llm-pi-ai`(官方�
 
 1. **刷新(⟳)** —— 一步完成:拉取目录、刷新模型勾选列表并同步路由。
 2. **其余全自动**:配置修改、存密钥、勾选变动都会自动持久化并写入;失败时保留上一次路由。
-3. **模型勾选** —— 默认全选;取消勾选的模型不写入路由(持久化为 `exclude`)。
+3. **模型勾选** —— 默认全选;取消勾选的模型不写入路由(持久化为 `exclude`)。列表按 magpie 供应商分组,支持按 id 模糊搜索。
 
 ### 依赖面
 

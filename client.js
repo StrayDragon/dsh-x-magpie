@@ -41,6 +41,8 @@ window.__ModuleLoader__.load({
 				syncedChanges: 'Synced: +{added} / -{removed} / ~{changed}',
 				selectTitle: 'Models',
 				selectHint: 'Unchecked models are left out of the route; everything is selected by default.',
+				searchPlaceholder: 'Search models\u2026',
+				noMatches: 'No model matches the filter.',
 				autoHint: 'Edits and selection apply automatically; on failure the previous route is kept.',
 				errGateway: 'Gateway URL must be an absolute http(s) address',
 				errRoute: 'Route name must be lowercase letters, digits and hyphens',
@@ -70,6 +72,8 @@ window.__ModuleLoader__.load({
 				syncedChanges: '已同步:新增 {added} / 移除 {removed} / 变更 {changed}',
 				selectTitle: '模型选择',
 				selectHint: '取消勾选的模型不会写入路由;默认全选。',
+				searchPlaceholder: '搜索模型…',
+				noMatches: '没有匹配的模型。',
 				autoHint: '配置与勾选自动应用;出错时保留上一次配置。',
 				errGateway: '网关地址必须是完整的 http(s) 地址',
 				errRoute: '路由名只能包含小写字母、数字和中划线',
@@ -155,10 +159,42 @@ select.dms-input { font-family: inherit; }
   text-overflow: ellipsis; white-space: nowrap; }
 .dms-model .cap { color: var(--dsw-alias-label-secondary); font-size: 11px;
   font-family: ui-monospace, monospace; flex-shrink: 0; }
+.dms-search { margin: 2px 0; }
+.dms-group { font-size: 11px; font-weight: 600; color: var(--dsw-alias-label-secondary);
+  text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 4px 2px;
+  border-top: 1px solid var(--dsw-alias-border-l1); margin-top: 4px;
+  display: flex; justify-content: space-between; gap: 8px; }
+.dms-group:first-child { border-top: none; margin-top: 0; }
+.dms-empty { color: var(--dsw-alias-label-secondary); font-size: 12px; padding: 8px 4px; }
 `;
 
 		function Dot({ on }) {
 			return h('span', { className: `dms-dot ${on ? 'ok' : 'miss'}`, 'aria-hidden': true });
+		}
+
+		/** Case-insensitive subsequence match: "glmflash" finds zhipu/glm-5.3-flash. */
+		function fuzzyMatch(query, text) {
+			if (!query) return true;
+			const haystack = text.toLowerCase();
+			let at = 0;
+			for (const ch of query.toLowerCase()) {
+				at = haystack.indexOf(ch, at);
+				if (at === -1) return false;
+				at += 1;
+			}
+			return true;
+		}
+
+		function groupModels(models, query) {
+			const filtered = models.filter((model) => fuzzyMatch(query, model.id));
+			const groups = new Map();
+			for (const model of filtered) {
+				const group = model.provider || model.id.split('/')[0] || 'other';
+				if (!groups.has(group)) groups.set(group, []);
+				groups.get(group).push(model);
+			}
+			const names = [...groups.keys()].sort((a, b) => a.localeCompare(b));
+			return { filtered, names, groups };
 		}
 
 		function MagpieSyncSection() {
@@ -170,6 +206,7 @@ select.dms-input { font-family: inherit; }
 			const [error, setError] = useState(null);
 			const [notice, setNotice] = useState(null);
 			const [keyValue, setKeyValue] = useState('');
+			const [query, setQuery] = useState('');
 			const [form, setForm] = useState(null);
 			const [form0, setForm0] = useState(null); // values as last loaded/persisted
 
@@ -517,10 +554,12 @@ select.dms-input { font-family: inherit; }
 					: null,
 				error ? h('div', { className: 'dms-error', role: 'alert' }, error) : null,
 				notice ? h('span', { className: 'dms-ok' }, notice) : null,
-				catalog && catalog.error
-					? h('div', { className: 'dms-error', role: 'alert' }, catalog.error)
-					: catalog && Array.isArray(catalog.models)
-						? h(
+			catalog && catalog.error
+				? h('div', { className: 'dms-error', role: 'alert' }, catalog.error)
+				: catalog && Array.isArray(catalog.models)
+					? (() => {
+							const { filtered, names, groups } = groupModels(catalogModels, query);
+							return h(
 								'div',
 								{ className: 'dms-card' },
 								h(
@@ -531,35 +570,54 @@ select.dms-input { font-family: inherit; }
 								),
 								h('span', { className: 'dms-hint' }, t('selectHint')),
 								catalog.warning ? h('span', { className: 'dms-hint dms-warn' }, catalog.warning) : null,
+								h('input', {
+									type: 'search',
+									className: 'dms-input dms-search grow',
+									value: query,
+									placeholder: t('searchPlaceholder'),
+									'aria-label': t('searchPlaceholder'),
+									onChange: (event) => setQuery(event.target.value),
+								}),
 								h(
 									'div',
 									{ className: 'dms-models' },
-									catalogModels.map((model) =>
-										h(
-											'div',
-											{ className: 'dms-model', key: model.id },
-											h(
-												'label',
-												null,
-												h('input', {
-													type: 'checkbox',
-													checked: !excluded.has(model.id),
-													onChange: () => toggleModel(model.id),
-												}),
-												h('span', { className: 'id' }, model.id),
-											),
-											h(
-												'span',
-												{ className: 'cap' },
-												[shortTokens(model.contextWindow), shortTokens(model.maxTokens)]
-													.filter(Boolean)
-													.join(' / '),
-											),
-										),
-									),
+									filtered.length === 0
+										? h('div', { className: 'dms-empty' }, t('noMatches'))
+										: names.flatMap((group) => [
+												h(
+													'div',
+													{ className: 'dms-group', key: `g:${group}` },
+													h('span', null, group),
+												h('span', null, `${groups.get(group).length}`),
+												),
+												...groups.get(group).map((model) =>
+													h(
+														'div',
+														{ className: 'dms-model', key: model.id },
+														h(
+															'label',
+															null,
+															h('input', {
+																type: 'checkbox',
+																checked: !excluded.has(model.id),
+																onChange: () => toggleModel(model.id),
+															}),
+															h('span', { className: 'id' }, model.id),
+														),
+														h(
+															'span',
+															{ className: 'cap' },
+															[shortTokens(model.contextWindow), shortTokens(model.maxTokens)]
+																.filter(Boolean)
+																.join(' / '),
+														),
+													),
+											  ),
+										  ]),
 								),
-							)
-						: null,
+							);
+						})()
+					: null,
 			);
 		}
 

@@ -242,13 +242,22 @@ async function planSync(ctx, cfg) {
 	const selected = all.filter((model) => !cfg.exclude.includes(model.id));
 	const candidate = candidateRoute(cfg, selected);
 	const current = row.providers[cfg.routeName];
+	const providerOf = new Map(
+		fetched.rows.map((raw) => [raw?.id, typeof raw?.owned_by === 'string' ? raw.owned_by : undefined]),
+	);
 	return {
 		gatewayUrl: cfg.gatewayUrl,
 		routeName: cfg.routeName,
 		routePresent: current !== undefined,
 		modelCount: selected.length,
-		// Light list for the selection UI; ids double as display names.
-		models: all.map((m) => ({ id: m.id, contextWindow: m.contextWindow, maxTokens: m.maxTokens })),
+		// Light list for the selection UI; ids double as display names and
+		// `provider` (magpie's owned_by) drives the checklist grouping.
+		models: all.map((m) => ({
+			id: m.id,
+			provider: providerOf.get(m.id),
+			contextWindow: m.contextWindow,
+			maxTokens: m.maxTokens,
+		})),
 		diff: diffRoute(current, candidate),
 		...(selected.length === 0 ? { warning: 'no models selected; applying would empty the route' } : {}),
 	};
