@@ -27,6 +27,9 @@ window.__ModuleLoader__.load({
 				gateway: 'Gateway',
 				route: 'DSH provider name',
 				routeHint: 'Lowercase letters, digits and hyphens.',
+				displayName: 'Display name',
+				displayNameHint: 'Provider name shown on dsh\u2019s Models page.',
+				errDisplayName: 'Display name must be 1\u201364 characters',
 				credential: 'Credential ref',
 				credentialHint: 'Reference name of the stored key \u2014 keep the default; the key itself goes below.',
 				apiLabel: 'Protocol',
@@ -58,6 +61,9 @@ window.__ModuleLoader__.load({
 				gateway: '网关',
 				route: 'DSH 供应商名',
 				routeHint: '小写字母、数字和中划线。',
+				displayName: '显示名',
+				displayNameHint: '显示在 dsh 模型页的供应商名称。',
+				errDisplayName: '显示名需要 1–64 个字符',
 				credential: '凭据引用名',
 				credentialHint: '已存密钥的引用名 \u2014 保持默认即可,密钥本体填在下方。',
 				apiLabel: '协议',
@@ -229,6 +235,7 @@ select.dms-input { font-family: inherit; }
 					const snapshot = {
 						gatewayUrl: next.gatewayUrl,
 						routeName: next.routeName,
+						displayName: next.displayName,
 						credentialRef: next.credentialRef,
 						api: next.api,
 						exclude: next.exclude ?? [],
@@ -256,14 +263,16 @@ select.dms-input { font-family: inherit; }
 					},
 					routeName: (v) => /^[a-z][a-z0-9-]*$/.test(v),
 					credentialRef: (v) => /^[A-Z][A-Z0-9_]*$/.test(v),
+					displayName: (v) => typeof v === 'string' && v.trim().length > 0 && v.length <= 64,
 				};
 				const errText = {
 					gatewayUrl: t('errGateway'),
 					routeName: t('errRoute'),
 					credentialRef: t('errCredential'),
+					displayName: t('errDisplayName'),
 				};
 				const patch = {};
-				for (const key of ['gatewayUrl', 'routeName', 'credentialRef', 'api', 'exclude']) {
+				for (const key of ['gatewayUrl', 'displayName', 'routeName', 'credentialRef', 'api', 'exclude']) {
 					if (JSON.stringify(current[key] ?? null) === JSON.stringify(base?.[key] ?? null)) continue;
 					if (VALID[key] && !VALID[key](current[key])) return { error: errText[key] };
 					patch[key] = key === 'gatewayUrl' ? current[key].replace(/\/+$/, '') : current[key];
@@ -480,6 +489,19 @@ select.dms-input { font-family: inherit; }
 									onChange: (event) => editField('gatewayUrl', event.target.value),
 								}),
 								h(Dot, { on: state.gatewayMounted === true }),
+							),
+							h(
+								'div',
+								{ className: 'dms-row' },
+								h('span', { className: 'dms-k' }, t('displayName')),
+								h('input', {
+									className: 'dms-input grow',
+									value: form.displayName ?? '',
+									'aria-label': t('displayName'),
+									onChange: (event) => editField('displayName', event.target.value),
+								}),
+								h(Dot, { on: state.routePresent === true }),
+								state.routePresent ? h('span', { className: 'dms-note' }, `${state.routeModelCount}`) : null,
 							),
 							h(
 								'div',

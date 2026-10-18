@@ -27,6 +27,7 @@ export const inject = ['webServer', 'configEditor', 'credentials'];
 const DEFAULTS = {
 	gatewayUrl: 'http://127.0.0.1:3425',
 	routeName: 'magpie',
+	displayName: 'Magpie (from dsh-magpie-sync)',
 	credentialRef: 'MAGPIE_GATEWAY_KEY',
 	api: 'openai-responses',
 	modelOverrides: {},
@@ -164,7 +165,7 @@ async function fetchModels(ctx, cfg) {
 
 function candidateRoute(cfg, models) {
 	return {
-		displayName: 'Magpie',
+		displayName: cfg.displayName || 'Magpie',
 		api: cfg.api,
 		// magpie speaks Messages at the gateway root and OpenAI dialects under /v1.
 		baseURL: cfg.api === 'anthropic-messages' ? cfg.gatewayUrl : `${cfg.gatewayUrl}/v1`,
@@ -315,6 +316,7 @@ async function readState(ctx, cfg) {
 	return {
 		gatewayUrl: cfg.gatewayUrl,
 		routeName: cfg.routeName,
+		displayName: cfg.displayName,
 		credentialRef: cfg.credentialRef,
 		api: cfg.api,
 		exclude: cfg.exclude,
@@ -377,6 +379,12 @@ function normalizeConfigPatch(body) {
 			return { error: 'exclude must be a list of model ids (at most 512)' };
 		}
 		updates.exclude = [...new Set(body.exclude)];
+	}
+	if (body.displayName !== undefined) {
+		if (typeof body.displayName !== 'string' || body.displayName.trim() === '' || body.displayName.length > 64) {
+			return { error: 'displayName must be a non-empty string of at most 64 characters' };
+		}
+		updates.displayName = body.displayName.trim();
 	}
 	return { updates };
 }

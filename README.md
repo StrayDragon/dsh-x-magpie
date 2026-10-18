@@ -44,10 +44,11 @@ Two items in the row's `config` (defaults in `cordis.patch.yml`):
 | field | default | meaning |
 | --- | --- | --- |
 | `gatewayUrl` | `http://127.0.0.1:3425` | magpie gateway base URL |
+| `displayName` | `Magpie (from dsh-magpie-sync)` | provider name shown on dsh's Models page |
 | `api` | `openai-responses` | wire protocol (`openai-responses` / `openai-completions` / `anthropic-messages`) |
 | `credentialRef` | `MAGPIE_GATEWAY_KEY` | credential reference for the gateway key |
 
-Optional: `routeName` (default `magpie`), `modelOverrides` (per-model corrections, patch file only).
+Optional: `routeName` (default `magpie`; the route key is a lowercase-hyphenated identifier, so keep it simple), `modelOverrides` (per-model corrections, patch file only).
 
 Everything except `modelOverrides` is editable on the plugin's Settings page and persisted into the profile patch through the config editor — no YAML hand-editing required.
 
@@ -104,9 +105,11 @@ bundle 插入一行(`magpie-sync`);要求 profile 已挂载 `llm-pi-ai`(官方�
 | 字段 | 默认 | 含义 |
 | --- | --- | --- |
 | `gatewayUrl` | `http://127.0.0.1:3425` | magpie 网关地址 |
+| `displayName` | `Magpie (from dsh-magpie-sync)` | dsh 模型页显示的供应商名称 |
+| `api` | `openai-responses` | 协议(`openai-responses` / `openai-completions` / `anthropic-messages`) |
 | `credentialRef` | `MAGPIE_GATEWAY_KEY` | 网关密钥的凭据引用名 |
 
-可选:`routeName`(默认 `magpie`)、`api`(`openai-completions`)、`modelOverrides`(按模型纠偏)。
+可选:`routeName`(默认 `magpie`;路由键必须是小写字母+数字+中划线,起名别太花)、`modelOverrides`(按模型纠偏,仅 patch 文件)。
 
 密钥本体在插件的设置页输入,存入 dsh 凭据存储(引用名 `credentialRef`),**不进任何配置文件**。若 magpie 自带的 dsh 集成已写入 `MAGPIE_GATEWAY_KEY`,无需再填。
 
