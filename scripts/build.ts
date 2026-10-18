@@ -1,34 +1,31 @@
 /**
- * Build the two runtime halves from src/ into the package root, preserving the
- * exact runtime shapes the dsh loader expects:
- *  - index.js: ESM, re-exporting `name`, `inject`, `apply` (host half)
- *  - client.js: IIFE text performing window.__ModuleLoader__.load (client half)
- * Type declarations land in lib/types/.
+ * Build the two runtime halves from src/ into the package root.
+ *
+ *  index.js  — esbuild ESM bundle of src/index.ts (loader contract exports).
+ *  client.js — esbuild IIFE of src/client-core.ts plus ONE
+ *              window.__ModuleLoader__.load registration whose factory returns
+ *              the core's plugin object; React reaches the bundle through the
+ *              `__dshRequire`/`__dshReact` globals the wrapper seeds from the
+ *              loader's require.
+ *  lib/types — tsc declarations for the host surface.
  */
 import { $ } from 'bun';
 
-// Host half: plain ESM re-exporting the loader contract.
 await $`bunx tsup src/index.ts --format esm --out-dir . --target es2022 --silent`.throws(true);
 
-// Client half: bundle the factory body, then wrap it in the loader call. The
-// banner/footer strings are plain text, so esbuild accepts them verbatim.
-await $`bunx esbuild src/client.ts --bundle --format=iife --global-name=__dshXMagpieClient --outfile=.client.body.js --target=es2022`.throws(true);
-const body = await Bun.file('.client.body.js').text();
-const inner = body.replace(/^var __dshXMagpieClient[^\n]*\n/, '').replace(/^var __dshXMagpieClient[^\n]*\n/, '').trim();
-const client = [
-	"window.__ModuleLoader__.load({",
-	"\tid: '@straydragon/dsh-x-magpie',",
-	"\tfactory: (require) => {",
-	inner.replace(/\n/g, '\n\t\t'), // indent the IIFE body two levels
-	'\t\treturn moduleExports;',
-	'\t},',
-	'});',
-	'',
-].join('\n');
+await $`bunx esbuild src/client-core.ts --bundle --format=iife --global-name=__dshXMagpieCore --outfile=.client.body.js --target=es2022`.throws(true);
+const bundled = (await Bun.file('.client.body.js').text()).trim();
+const client = `window.__dshXMagpieLoader = { require: (spec) => require(spec) };
+var __dshRequire = window.__dshXMagpieLoader.require;
+${bundled}
+window.__ModuleLoader__.load({
+	id: '@straydragon/dsh-x-magpie',
+	factory: () => __dshXMagpieCore?.default ?? __dshXMagpieCore,
+});
+`;
 await Bun.write('client.js', client);
 await $`rm .client.body.js`.throws(true);
 
-// Declarations for the host surface.
-await $`bunx tsc --emitDeclarationOnly --declaration --declarationMap --outDir lib/types --ignoreConfig --strict --target es2022 --moduleResolution bundler --module esnext --skipLibCheck src/index.ts src/shared.ts`.throws(true);
+await $`bunx tsc --emitDeclarationOnly --declaration --declarationMap --outDir lib/types --ignoreConfig --strict --target es2022 --moduleResolution bundler --module esnext --skipLibCheck --types bun src/index.ts`.throws(true);
 
 console.log('build: index.js + client.js + lib/types ✔');
