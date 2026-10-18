@@ -401,7 +401,14 @@ export function apply(ctx, config) {
 				return json(res, 200, await readState(ctx, readConfig(config)));
 			}
 			if (req.method === 'POST' && action === '/plan') {
-				return json(res, 200, await planSync(ctx, readConfig(config)));
+				const body = await readBody(req);
+				const base = readConfig(config);
+				if (body && typeof body === 'object') {
+					const check = normalizeConfigPatch(body);
+					if (check.error) return json(res, 200, { error: check.error });
+					Object.assign(base, check.updates);
+				}
+				return json(res, 200, await planSync(ctx, base));
 			}
 			if (req.method === 'POST' && action === '/apply') {
 				return json(res, 200, await applySync(ctx, readConfig(config)));

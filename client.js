@@ -41,6 +41,7 @@ window.__ModuleLoader__.load({
 				errRoute: 'Route name must be lowercase letters, digits and hyphens',
 				errCredential: 'Credential ref must be UPPER_CASE letters, digits and underscores \u2014 keep the default',
 				noConfigChanges: 'No setting changed.',
+				dirtyHint: 'Unsaved edits \u2014 \u201cCheck for changes\u201d previews them; \u201cApply\u201d saves first.',
 				removeRoute: 'Remove route',
 				removeLoading: 'Removing\u2026',
 				removed: 'Route removed.',
@@ -89,6 +90,7 @@ window.__ModuleLoader__.load({
 				errRoute: '路由名只能包含小写字母、数字和中划线',
 				errCredential: '凭据引用名只能是大写字母、数字和下划线 \u2014 保持默认即可',
 				noConfigChanges: '设置没有变化。',
+				dirtyHint: '有未保存的修改 \u2014\u201c检查变更\u201d按表单值预览;\u201c应用\u201d会先保存再同步。',
 				removeRoute: '移除路由',
 				removeLoading: '正在移除…',
 				removed: '路由已移除。',
@@ -190,6 +192,7 @@ select.dms-input { font-family: inherit; }
 .dms-error { border: 1px solid var(--dsw-alias-state-error-primary); border-radius: 8px;
   padding: 8px 12px; color: var(--dsw-alias-state-error-primary); white-space: pre-wrap; }
 .dms-ok { color: var(--dsw-alias-state-success-primary); }
+.dms-warn { color: var(--dsw-alias-state-warn-primary); }
 .dms-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .dms-chip { font-family: ui-monospace, monospace; font-size: 12px; border-radius: 6px;
   padding: 2px 8px; border: 1px solid var(--dsw-alias-border-l1);
@@ -371,34 +374,118 @@ select.dms-input { font-family: inherit; }
 				setError(null);
 				setNotice(null);
 				try {
-					setPlan(await call('/plan', {}));
+					// Preview with the form's current values, saved or not.
+					setPlan(
+						await call('/plan', {
+							gatewayUrl: form.gatewayUrl.replace(/\/+$/, ''),
+							routeName: form.routeName,
+							credentialRef: form.credentialRef,
+							api: form.api,
+						}),
+					);
 				} catch (err) {
 					setError(err?.message ?? String(err));
 					setPlan(null);
 				} finally {
 					setBusy(null);
 				}
+			}, [form]);
+
+			const waitState = useCallback(async (pick, expected) => {
+				for (let i = 0; i < 10; i++) {
+					try {
+						const snapshot = await call('/state');
+						if (pick(snapshot) === expected) return snapshot;
+					} catch {}
+					await new Promise((resolve) => setTimeout(resolve, 300));
+				}
+				return null;
 			}, []);
+
+			const persistChanged = useCallback(async () => {
+				const VALID = {
+					gatewayUrl: (v) => {
+						try {
+							return Boolean(new URL(v)) && /^https?:/.test(new URL(v).protocol);
+						} catch {
+							return false;
+						}
+					},
+					routeName: (v) => /^[a-z][a-z0-9-]*$/.test(v),
+					credentialRef: (v) => /^[A-Z][A-Z0-9_]*$/.test(v),
+				};
+				const errText = {
+					gatewayUrl: t('errGateway'),
+					routeName: t('errRoute'),
+					credentialRef: t('errCredential'),
+				};
+				const patch = {};
+				for (const key of ['gatewayUrl', 'routeName', 'credentialRef', 'api']) {
+					if (form[key] === form0?.[key]) continue;
+					if (VALID[key] && !VALID[key](form[key])) return { error: errText[key] };
+					patch[key] = key === 'gatewayUrl' ? form[key].replace(/\/+$/, '') : form[key];
+				}
+				if (Object.keys(patch).length === 0) return { ok: true, persisted: false };
+				await call('/config', patch);
+				return { ok: true, persisted: true };
+			}, [form, form0, t]);
 
 			const runApply = useCallback(async () => {
 				setBusy('apply');
 				setError(null);
+				setNotice(null);
 				try {
+					// Apply writes what the saved config says: persist edits first,
+					// and wait until the restarted plugin serves the new values.
+					const saved = await persistChanged();
+					if (saved.error) {
+						setError(saved.error);
+						setBusy(null);
+						return;
+					}
+					if (saved.persisted) {
+						const fresh = await waitState((s) => s.gatewayUrl, form.gatewayUrl.replace(/\/+$/, ''));
+						if (!fresh) {
+							setError(t('stateError'));
+							setBusy(null);
+							return;
+						}
+					}
 					const result = await call('/apply', {});
 					setPlan(null);
 					setNotice(
 						result?.diff &&
-							(result.diff.added.length + result.diff.removed.length + result.diff.changed.length === 0)
+							result.diff.added.length + result.diff.removed.length + result.diff.changed.length === 0
 							? t('noChanges')
 							: t('applied'),
 					);
-					refreshState();
+					refreshState(true);
 				} catch (err) {
 					setError(err?.message ?? String(err));
 				} finally {
 					setBusy(null);
 				}
-			}, [refreshState, t]);
+			}, [form, persistChanged, refreshState, t, waitState]);
+
+			const saveConfig = useCallback(async () => {
+				setBusy('config');
+				setError(null);
+				setNotice(null);
+				try {
+					const saved = await persistChanged();
+					if (saved.error) {
+						setError(saved.error);
+						return;
+					}
+					setNotice(t('configSaved'));
+					setPlan(null);
+					await refreshState(true);
+				} catch (err) {
+					setError(err?.message ?? String(err));
+				} finally {
+					setBusy(null);
+				}
+			}, [persistChanged, refreshState, t]);
 
 			const saveKey = useCallback(async () => {
 				setBusy('key');
@@ -432,58 +519,12 @@ select.dms-input { font-family: inherit; }
 				}
 			}, [refreshState, t]);
 
-			const saveConfig = useCallback(async () => {
-				setBusy('config');
-				setError(null);
-				setNotice(null);
-				try {
-					const VALID = {
-						gatewayUrl: (v) => {
-							try {
-								return Boolean(new URL(v)) && /^https?:/.test(new URL(v).protocol);
-							} catch {
-								return false;
-							}
-						},
-						routeName: (v) => /^[a-z][a-z0-9-]*$/.test(v),
-						credentialRef: (v) => /^[A-Z][A-Z0-9_]*$/.test(v),
-					};
-					const errText = {
-						gatewayUrl: t('errGateway'),
-						routeName: t('errRoute'),
-						credentialRef: t('errCredential'),
-					};
-					const patch = {};
-					for (const key of ['gatewayUrl', 'routeName', 'credentialRef', 'api']) {
-						if (form[key] === form0?.[key]) continue;
-						if (VALID[key] && !VALID[key](form[key])) {
-							setError(errText[key]);
-							setBusy(null);
-							return;
-						}
-						patch[key] = form[key];
-					}
-					if (Object.keys(patch).length === 0) {
-						setNotice(t('noConfigChanges'));
-						setBusy(null);
-						return;
-					}
-					await call('/config', patch);
-					setNotice(t('configSaved'));
-					setPlan(null);
-					await refreshState(true);
-				} catch (err) {
-					setError(err?.message ?? String(err));
-				} finally {
-					setBusy(null);
-				}
-			}, [form, form0, refreshState, t]);
-
 			const hasChanges =
 				plan &&
 				plan.diff &&
 				(plan.diff.added.length + plan.diff.removed.length + plan.diff.changed.length > 0 ||
 					plan.diff.route.length > 0);
+			const dirty = Boolean(form && form0 && JSON.stringify(form) !== JSON.stringify(form0));
 
 			return h(
 				'div',
@@ -541,14 +582,15 @@ select.dms-input { font-family: inherit; }
 									h(
 										'button',
 										{
-											className: 'dms-btn',
-											disabled: busy !== null || JSON.stringify(form) === JSON.stringify(form0),
+											className: dirty ? 'dms-btn primary' : 'dms-btn',
+											disabled: busy !== null || !dirty,
 											onClick: saveConfig,
 										},
 										busy === 'config' ? t('configLoading') : t('saveConfig'),
 									),
 									h('span', { className: 'dms-hint' }, t('configHint')),
 								),
+								dirty ? h('span', { className: 'dms-hint dms-warn' }, t('dirtyHint')) : null,
 								h(
 									'details',
 									{ className: 'dms-advanced' },
