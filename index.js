@@ -167,9 +167,11 @@ function candidateRoute(cfg, models) {
 
 /** Current llm-pi-ai entry plus its effective providers map, or an error marker. */
 function llmPiAi(ctx) {
-	const entry = ctx.configEditor.entries().find((candidate) => candidate.id === LLM_PI_AI_ID);
+	/** Loader entries expose their patch id at `options.id`. */
+	const entryId = (entry) => entry?.options?.id ?? entry?.id;
+	const entry = ctx.configEditor.entries().find((candidate) => entryId(candidate) === LLM_PI_AI_ID);
 	if (!entry) return { error: `no "${LLM_PI_AI_ID}" row in this profile; mount it before syncing` };
-	const item = ctx.configEditor.configuration().find((candidate) => candidate.entry.id === LLM_PI_AI_ID);
+	const item = ctx.configEditor.configuration().find((candidate) => entryId(candidate.entry) === LLM_PI_AI_ID);
 	const inherited = item?.inherited ?? {};
 	const override = item?.override ?? {};
 	const providers = { ...(inherited.providers ?? {}), ...(override.providers ?? {}) };
