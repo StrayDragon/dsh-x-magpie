@@ -6,9 +6,9 @@
   </g>
   <g>
     <circle cx="49" cy="49" r="10.5" fill="#1f2430" stroke="#e8ecf4" stroke-width="1.6"/>
-    <path d="M43.8 49a5.2 5.2 0 0 1 8.9-3.7" fill="none" stroke="#57c8a8" stroke-width="2.4" stroke-linecap="round"/>
-    <path d="M54.2 49a5.2 5.2 0 0 1-8.9 3.7" fill="none" stroke="#57c8a8" stroke-width="2.4" stroke-linecap="round"/>
-    <path d="M53.6 43.6l-.5 2.6 2.5-.9z" fill="#57c8a8"/>
-    <path d="M44.4 54.4l.5-2.6-2.5.9z" fill="#57c8a8"/>
+    <path d="M43.80 49.00A5.2 5.2 0 0 1 53.50 46.40" fill="none" stroke="#57c8a8" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M54.20 49.00A5.2 5.2 0 0 1 44.50 51.60" fill="none" stroke="#57c8a8" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M53.50 46.40L50.26 44.58L53.55 42.68Z" fill="#57c8a8"/>
+    <path d="M44.50 51.60L47.74 53.42L44.45 55.32Z" fill="#57c8a8"/>
   </g>
 </svg>
