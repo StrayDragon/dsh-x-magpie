@@ -12,7 +12,8 @@
 		},
 		"./client": "./dist/client.js",
 		"./assets/locale/*.json": "./assets/locale/*.json",
-		"./icon": "./assets/icon.png"
+		"./icon": "./assets/icon.png",
+		"./package.json": "./package.json"
 	},
 	"files": [
 		"dist/index.js",
