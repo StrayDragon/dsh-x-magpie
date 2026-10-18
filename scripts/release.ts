@@ -15,9 +15,11 @@ if (!version || !/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(version)) {
 }
 
 const manifest = JSON.parse(await Bun.file('package.json').text());
-if (manifest.version === version) {
-	console.error(`package.json is already ${version}; bump to a new version`);
-	process.exit(1);
+if (manifest.version !== version) {
+	manifest.version = version;
+	await Bun.write('package.json', `${JSON.stringify(manifest, null, '\t')}\n`);
+	await $`git add package.json`.quiet();
+	await $`git commit -m release: v${version}`.quiet();
 }
 
 const dirty = await $`git status --porcelain`.quiet().text();
@@ -27,16 +29,12 @@ if (dirty.trim() !== '') {
 }
 
 const tag = `v${version}`;
-const existing = await $`git tag -l {{tag}}`.text().catch(() => '');
+const existing = await $`git tag -l ${tag}`.text().catch(() => '');
 if (existing.trim() !== '') {
 	console.error(`tag ${tag} already exists`);
 	process.exit(1);
 }
 
-manifest.version = version;
-await Bun.write('package.json', `${JSON.stringify(manifest, null, '\t')}\n`);
-await $`git add package.json`.quiet();
-await $`git commit -m release: v${version}`.quiet();
 await $`git tag ${tag}`;
 await $`git push && git push origin ${tag}`;
 console.log(`released ${tag} — release.yml now builds the tarball and attaches it to the GitHub Release`);
