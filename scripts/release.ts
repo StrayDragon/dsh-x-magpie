@@ -14,18 +14,20 @@ if (!version || !/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(version)) {
 	process.exit(1);
 }
 
-const manifest = JSON.parse(await Bun.file('package.json').text());
-if (manifest.version !== version) {
-	manifest.version = version;
-	await Bun.write('package.json', `${JSON.stringify(manifest, null, '\t')}\n`);
-	await $`git add package.json`.quiet();
-	await $`git commit -m release: v${version}`.quiet();
+const dirtyBefore = await $`git status --porcelain`.quiet().text();
+if (dirtyBefore.trim() !== '') {
+	console.error('working tree not clean; commit or stash first:\n' + dirtyBefore);
+	process.exit(1);
 }
 
-const dirty = await $`git status --porcelain`.quiet().text();
-if (dirty.trim() !== '') {
-	console.error('working tree not clean; commit or stash first:\n' + dirty);
-	process.exit(1);
+const manifest = JSON.parse(await Bun.file('package.json').text());
+if (manifest.version !== version) {
+	// Rewrite with the file's own indentation so the diff stays a one-line bump.
+	const indent = /^\s/m.exec(await Bun.file('package.json').text())?.[0] ?? '\t';
+	manifest.version = version;
+	await Bun.write('package.json', `${JSON.stringify(manifest, null, indent)}\n`);
+	await $`git add package.json`.quiet();
+	await $`git commit -m release: v${version}`.quiet();
 }
 
 const tag = `v${version}`;

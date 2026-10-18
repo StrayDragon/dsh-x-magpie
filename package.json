@@ -1,53 +1,53 @@
 {
-  "name": "@straydragon/dsh-x-magpie",
-  "version": "0.7.1",
-  "description": "Pull the model catalog of a magpie gateway into a dsh llm-pi-ai provider route, with a reviewed diff before any write.",
-  "license": "MIT",
-  "type": "module",
-  "icon": "./assets/icon.png",
-  "exports": {
-    ".": {
-      "types": "./dist/types/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./client": "./dist/client.js",
-    "./assets/locale/*.json": "./assets/locale/*.json",
-    "./icon": "./assets/icon.png"
-  },
-  "files": [
-    "dist/index.js",
-    "dist/client.js",
-    "dist/types/*.d.ts",
-    "dist/types/*.d.ts.map",
-    "src/*.ts",
-    "cordis.patch.yml",
-    "assets/locale/*.json",
-    "assets/icon.png"
-  ],
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "platform": "web",
-      "immediately": true,
-      "inject": [
-        "@deepseek-ai/dsh-client-ui-settings",
-        "@deepseek-ai/dsh-client-ui-theme"
-      ]
-    }
-  },
-  "devDependencies": {
-    "@types/bun": "^1.4.3",
-    "@types/react": "^19.3.0",
-    "tsup": "^9.0.0",
-    "typescript": "^7.0.2"
-  },
-  "scripts": {
-    "typecheck": "tsc --noEmit",
-    "build": "bun run scripts/build.ts",
-    "prepublishOnly": "bun run typecheck && bun run build",
-    "test:smoke": "bun scripts/smoke.mjs"
-  },
-  "packageManager": "bun@1.4.3"
+	"name": "@straydragon/dsh-x-magpie",
+	"version": "0.7.2",
+	"description": "Pull the model catalog of a magpie gateway into a dsh llm-pi-ai provider route, with a reviewed diff before any write.",
+	"license": "MIT",
+	"type": "module",
+	"icon": "./assets/icon.png",
+	"exports": {
+		".": {
+			"types": "./dist/types/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./client": "./dist/client.js",
+		"./assets/locale/*.json": "./assets/locale/*.json",
+		"./icon": "./assets/icon.png"
+	},
+	"files": [
+		"dist/index.js",
+		"dist/client.js",
+		"dist/types/*.d.ts",
+		"dist/types/*.d.ts.map",
+		"src/*.ts",
+		"cordis.patch.yml",
+		"assets/locale/*.json",
+		"assets/icon.png"
+	],
+	"dsh": {
+		"bundle": {
+			"patch": "./cordis.patch.yml"
+		},
+		"client": {
+			"platform": "web",
+			"immediately": true,
+			"inject": [
+				"@deepseek-ai/dsh-client-ui-settings",
+				"@deepseek-ai/dsh-client-ui-theme"
+			]
+		}
+	},
+	"devDependencies": {
+		"@types/bun": "^1.4.3",
+		"@types/react": "^19.3.0",
+		"tsup": "^9.0.0",
+		"typescript": "^7.0.2"
+	},
+	"scripts": {
+		"typecheck": "tsc --noEmit",
+		"build": "bun run scripts/build.ts",
+		"prepublishOnly": "bun run typecheck && bun run build",
+		"test:smoke": "bun scripts/smoke.mjs"
+	},
+	"packageManager": "bun@1.4.3"
 }
