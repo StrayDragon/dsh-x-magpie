@@ -39,7 +39,8 @@ const LLM_PI_AI_ID = 'llm-pi-ai';
 
 /** pi-ai reasoning level vocabulary; anything else the gateway reports is dropped. */
 const LEVELS = new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']);
-const MODALITIES = new Set(['text', 'image', 'audio', 'video', 'pdf']);
+/** llm-pi-ai's config schema accepts exactly these request modalities. */
+const MODALITIES = new Set(['text', 'image']);
 
 /** Volatile config fields arrive as lazily-resolved wrappers in built plugins. */
 function plain(value) {

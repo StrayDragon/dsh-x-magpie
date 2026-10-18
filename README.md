@@ -58,7 +58,7 @@ The gateway key itself is entered on the plugin's Settings page and stored in ds
 
 Settings → **Magpie model sync**:
 
-1. **Check for changes** — fetches the gateway, shows added/removed/changed models and route-field changes.
+1. **Pull now** — fetches the gateway, shows added/removed/changed models and route-field changes.
 2. **Apply** — writes the route (button enabled only when the diff is non-empty).
 
 ### Coexistence notes
@@ -115,7 +115,7 @@ bundle 插入一行(`magpie-sync`);要求 profile 已挂载 `llm-pi-ai`(官方�
 
 设置 → **Magpie 模型同步**:
 
-1. **检查变更** —— 拉取网关,展示新增/移除/变更模型与路由字段变化。
+1. **同步拉取** —— 拉取网关,展示新增/移除/变更模型与路由字段变化。
 2. **应用** —— 写入路由(仅当 diff 非空时可用)。
 
 ### 依赖面
