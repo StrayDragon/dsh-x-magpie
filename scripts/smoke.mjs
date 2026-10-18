@@ -8,7 +8,7 @@ const rows = [
 const gw = http.createServer((req,res)=>{ res.setHeader('content-type','application/json'); res.end(JSON.stringify({data:rows})); });
 await new Promise(r=>gw.listen(3425,'127.0.0.1',r));
 process.on('exit', () => gw.close());
-const mod = await import(new URL('../index.js', import.meta.url).href);
+const mod = await import(new URL('../dist/index.js', import.meta.url).href);
 console.log('name =', mod.name, '| inject =', JSON.stringify(mod.inject));
 let written = null; let selfCfg = { gatewayUrl:'http://127.0.0.1:3425', routeName:'magpie', displayName:'X', credentialRef:'MAGPIE_GATEWAY_KEY', api:'openai-responses', modelOverrides:{}, exclude: [] };
 const config = new Proxy({}, { get: (t,k) => selfCfg[k] });

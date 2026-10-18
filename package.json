@@ -1,27 +1,28 @@
 {
   "name": "@straydragon/dsh-x-magpie",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Pull the model catalog of a magpie gateway into a dsh llm-pi-ai provider route, with a reviewed diff before any write.",
   "license": "MIT",
   "type": "module",
+  "icon": "./assets/icon.svg",
   "exports": {
     ".": {
-      "types": "./lib/types/index.d.ts",
-      "default": "./index.js"
+      "types": "./dist/types/index.d.ts",
+      "default": "./dist/index.js"
     },
-    "./client": "./client.js",
-    "./locale/*.json": "./locale/*.json",
-    "./icon": "./icon.svg"
+    "./client": "./dist/client.js",
+    "./assets/locale/*.json": "./assets/locale/*.json",
+    "./icon": "./assets/icon.svg"
   },
   "files": [
-    "index.js",
-    "client.js",
-    "lib/types/*.d.ts",
-    "lib/types/*.d.ts.map",
+    "dist/index.js",
+    "dist/client.js",
+    "dist/types/*.d.ts",
+    "dist/types/*.d.ts.map",
     "src/*.ts",
     "cordis.patch.yml",
-    "locale/*.json",
-    "icon.svg"
+    "assets/locale/*.json",
+    "assets/icon.svg"
   ],
   "dsh": {
     "bundle": {
@@ -47,5 +48,6 @@
     "build": "bun run scripts/build.ts",
     "prepublishOnly": "bun run typecheck && bun run build",
     "test:smoke": "bun scripts/smoke.mjs"
-  }
+  },
+  "packageManager": "bun@1.4.3"
 }

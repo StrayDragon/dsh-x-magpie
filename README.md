@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://github.com/StrayDragon/dsh-x-magpie"><img src="icon.svg" width="112" alt="dsh-x-magpie 图标:深色圆角底上的 magpie 鹊鸟,右下角为青色同步徽标"></a>
+<a href="https://github.com/StrayDragon/dsh-x-magpie"><img src="assets/icon.svg" width="112" alt="dsh-x-magpie 图标:深色圆角底上的 magpie 鹊鸟,右下角为青色同步徽标"></a>
 
 # dsh-x-magpie
 
@@ -9,7 +9,7 @@
 拉取 magpie 网关的模型列表,写入 dsh 的 llm-pi-ai 供应商路由。
 写盘之前先展示逐字段差异,确认后才应用。
 
-[![版本](https://img.shields.io/badge/版本-0.7.0-1f2430)](#更新日志)
+[![版本](https://img.shields.io/badge/版本-0.7.1-1f2430)](#更新日志)
 [![协议](https://img.shields.io/badge/协议-MIT-1f2430)](#许可证)
 [![dsh](https://img.shields.io/badge/DeepSeek_Harness-插件-1f2430)](https://github.com/deepseek-ai)
 [![magpie](https://img.shields.io/badge/magpie-网关同步-1f2430)](https://usemagpie.ai)
@@ -42,12 +42,26 @@
 
 ## 安装
 
-### 方式一:从 GitHub 克隆(推荐)
+### 方式一:Release tarball(推荐,免构建)
 
-1. 克隆本仓库:
+每次发版,GitHub Release 附带构建好的 `.tgz`,安装时不需要任何构建授权:
+
+1. 从 [Releases](https://github.com/StrayDragon/dsh-x-magpie/releases) 下载最新 `dsh-x-magpie-<版本>.tgz`。
+2. 安装(或直接用 GitHub 上发布的 tgz 链接):
+
+```sh
+dsh plugin --profile <profile> add ./dsh-x-magpie-<版本>.tgz
+```
+
+3. 硬刷新浏览器页面(Ctrl+Shift+R),打开 设置 → Magpie 模型同步。
+
+### 方式二:从 GitHub 克隆
+
+1. 克隆本仓库并在本机构建:
 
 ```sh
 git clone https://github.com/StrayDragon/dsh-x-magpie.git
+cd dsh-x-magpie && just build   # 产物输出到 dist/
 ```
 
 2. 在 dsh 的会话里对 agent 说,把 `<克隆路径>` 替换为第 1 步得到的目录:
@@ -59,6 +73,8 @@ git clone https://github.com/StrayDragon/dsh-x-magpie.git
 也可以不用 agent:打开 dsh 网页的 设置 → 插件,选择从目录安装,指向该目录。
 
 3. 硬刷新浏览器页面(Ctrl+Shift+R),打开 设置 → Magpie 模型同步。
+
+> 说明:本插件不发布到 npm。dsh 插件市场支持自定义 index 源(`npm` 源可指向任意 registry,`git` 源锁 commit);将来若要上架市场,补一份 index JSON 即可,插件包本身无需改动。
 
 ### 方式二:本地 link 安装(本机开发)
 
@@ -140,40 +156,43 @@ magpie 网关同时支持三种协议。`openai-responses` 与 `openai-completio
 
 ## 开发
 
-仓库以 TypeScript 维护,`src/` 是唯一事实来源;包根的 `index.js` / `client.js` 是构建产物,不要手改。
+仓库以 TypeScript 维护,`src/` 是唯一事实来源;`dist/` 是构建产物,不要手改,也不入库(CI 现场构建)。所有日常命令走 [just](https://github.com/casey/just):
 
 ```sh
-bun install        # devDependencies: typescript / tsup(esbuild) / @types
-bun run typecheck  # strict tsc,noEmit
-bun run build      # tsup + esbuild → index.js / client.js;tsc → lib/*.d.ts
-bun run test:smoke # 内置冒烟:mock 网关上的 plan/apply/exclude 全链路断言
+just    # 列出全部命令(每条上方注释即说明)
+
+just install      # bun install --frozen-lockfile
+just check        # typecheck + build + smoke,与 CI 完全一致
+just dev          # 日常循环:装依赖 + 构建 + 冒烟
+just pack         # 构建 + 打出可安装的 .tgz(dsh plugin add ./x.tgz 即装)
+just release 0.8.0  # 改版本号 + commit + 打 tag + push(触发 Release CD)
 ```
 
-CI(GitHub Actions)在每次 push 与 PR 上依次运行以上四步,并检查构建产物已提交、无漂移。发布即 `git push`;改代码后本地验证与 CI 相同。
+CI(GitHub Actions)在每次 push 与 PR 上运行 `just check` 同款步骤,并断言 `dist/` 关键产物存在。发版:打 `v*` tag 后,Release 工作流构建、打包 tarball 并附到 GitHub Release,无任何密钥要求。
 
 ## 项目结构
 
 ```text
 dsh-x-magpie/
-├── src/                # TypeScript 源(唯一事实来源)
-│   ├── index.ts        # host 半:拉取 / 映射 / 差异 / 写入,同源 HTTP 路由
-│   ├── client.ts       # client 半:设置页 UI,注册于 settings.section
-│   ├── shared.ts       # 两半共享的类型与常量
+├── justfile             # 任务入口;裸 just 列出全部命令与注释
+├── src/                 # TypeScript 源(唯一事实来源)
+│   ├── index.ts         # host 半:拉取 / 映射 / 差异 / 写入,同源 HTTP 路由
+│   ├── client-core.ts   # client 半:设置页 UI,注册于 settings.section
+│   ├── shared.ts        # 两半共享的类型与常量
 │   └── dsh-client-env.d.ts
-├── scripts/build.ts    # 构建入口;scripts/smoke.mjs 行为冒烟
-├── index.js            # 构建产物:host 半 ESM
-├── client.js           # 构建产物:client 半 loader 注册脚本
-├── lib/types/          # 构建产物:声明文件
-├── package.json        # bundle 清单:dsh.bundle.patch + dsh.client 声明
-├── cordis.patch.yml    # 插入 dsh-x-magpie 行,携带默认 config
-├── locale/*.json       # 插件名与描述(英 / 简体中文)
-└── icon.svg            # magpie 鹊鸟 + 同步徽标
+├── scripts/             # build.ts 构建入口;smoke.mjs 行为冒烟;release.ts 发版
+├── dist/                # 构建产物(git 不入库):index.js / client.js / types/
+├── assets/              # 静态资源:icon.svg + locale/*.json(插件名与描述)
+├── package.json         # bundle 清单:dsh.bundle.patch + dsh.client 声明
+├── cordis.patch.yml     # 插入 dsh-x-magpie 行,携带默认 config
+└── .github/workflows/   # ci.yml 质量门;release.yml 打 tag → tarball → GitHub Release
 ```
 
 host 半注入 3 个 dsh 服务:`webServer`(同源 HTTP)、`configEditor`(经 Loader 路径持久化)、`credentials`(密钥存储)。运行时零 npm 依赖;TypeScript 工具链仅 devDependencies,不进入安装包。
 
 ## 更新日志
 
+- 0.7.1 工程化:产物收敛 `dist/`、静态资源迁移 `assets/`、justfile 任务入口、Release CD(tag → tarball → GitHub Release);运行时行为与配置面不变。
 - 0.7.0 TypeScript 重写(`src/` 为源,strict tsc)与 CI 质量门;运行时行为与配置面不变。
 - 0.6.0 项目更名 `dsh-x-magpie`;同步徽标箭头沿弧线切线方向。
 - 0.5.x 显示名可配置;模型勾选列表按供应商分组,支持模糊搜索;单一 ⟳ 按钮,其余改动自动应用,失败保留上一次路由。
@@ -184,14 +203,13 @@ host 半注入 3 个 dsh 服务:`webServer`(同源 HTTP)、`configEditor`(经 Lo
 
 A [DeepSeek Harness](https://github.com/deepseek-ai) plugin that syncs the model catalog of a running [magpie](https://usemagpie.ai) gateway into one dsh `llm-pi-ai` provider route, with a field-level diff before any write.
 
-1. `git clone https://github.com/StrayDragon/dsh-x-magpie.git`
-2. Install the cloned directory as a dsh bundle in your profile: ask your agent, or use Plugin Manager → install from directory.
-3. Hard-refresh the browser page, then open Settings → Magpie model sync.
+1. Grab the prebuilt `.tgz` from [Releases](https://github.com/StrayDragon/dsh-x-magpie/releases) and run `dsh plugin --profile <name> add ./dsh-x-magpie-<version>.tgz` — no build-step approval needed. Alternatively clone and `just build`, then install the directory.
+2. Hard-refresh the browser page, then open Settings → Magpie model sync.
 
-The settings page handles the rest: gateway URL and key, per-model selection (all selected by default), protocol, and display name. Edits apply automatically; a failed sync keeps the previous route. Field mapping and details: see the Chinese sections above. The settings UI is bilingual (English / 简体中文).
+The settings page handles the rest: gateway URL and key, per-model selection (all selected by default), protocol, and display name. Edits apply automatically; a failed sync keeps the previous route. Development: `just` lists every task, `just check` mirrors CI, and pushing a `v*` tag publishes a release tarball. Field mapping and details: see the Chinese sections above. The settings UI is bilingual (English / 简体中文).
 
 ## 许可证
 
 MIT,见 [LICENSE](LICENSE)。
 
-插件图标组合了 [magpie](https://github.com/yetone/magpie) 的鹊鸟标志(`build/icon/magpie.svg`,MIT,© yetone)与同步徽标,署名保留于此。
+插件图标组合了 [magpie](https://github.com/yetone/magpie) 的鹊鸟标志(`assets/icon.svg`,MIT,© yetone)与同步徽标,署名保留于此。

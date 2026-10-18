@@ -22,14 +22,17 @@ jobs:
       - name: Typecheck (strict)
         run: bun run typecheck
 
-      - name: Build
+      - name: Build into dist/
         run: bun run build
 
       - name: Built output is valid ESM
-        run: bun build --no-bundle index.js --outdir /tmp/verify && node --check client.js
+        run: bun build --no-bundle dist/index.js --outdir /tmp/verify && node --check dist/client.js
 
       - name: Behavioral smoke (host half against a mock gateway)
         run: bun run test:smoke
 
-      - name: No uncommitted build artifacts
-        run: git diff --exit-code -- index.js client.js
+      - name: dist/ carries the shippable tree
+        run: |
+          test -f dist/index.js
+          test -f dist/client.js
+          test -f dist/types/index.d.ts

@@ -1,5 +1,5 @@
 /**
- * Build the two runtime halves from src/ into the package root.
+ * Build the two runtime halves from src/ into dist/.
  *
  * The client artifact matches the shape of dsh's own compiled plugins: exactly
  * one window.__ModuleLoader__.load({id, factory}) whose factory receives the
@@ -8,16 +8,18 @@
  * of require, so those calls hit the loader's module table — the same way the
  * official build pipeline inlines its bundle into the factory scope.
  *
- *  index.js  — esbuild ESM bundle of src/index.ts (loader contract exports).
- *  client.js — reopened-IIFE wrapper of src/client-core.ts.
- *  lib/types — tsc declarations for the host surface.
+ *  dist/index.js  — esbuild ESM bundle of src/index.ts (loader contract exports).
+ *  dist/client.js — reopened-IIFE wrapper of src/client-core.ts.
+ *  dist/types     — tsc declarations for the host surface.
  */
 import { $ } from 'bun';
 
-await $`bunx tsup src/index.ts --format esm --out-dir . --target es2022 --silent`.throws(true);
+await $`mkdir -p dist`.quiet();
 
-await $`bunx esbuild src/client-core.ts --bundle --external:react --format=iife --global-name=__dshXMagpieCore --outfile=.client.body.js --target=es2022 --legal-comments=none`.throws(true);
-const raw = (await Bun.file('.client.body.js').text()).trim();
+await $`bunx tsup src/index.ts --format esm --out-dir dist --target es2022 --silent`.throws(true);
+
+await $`bunx esbuild src/client-core.ts --bundle --external:react --format=iife --global-name=__dshXMagpieCore --outfile=dist/.client.body.js --target=es2022 --legal-comments=none`.throws(true);
+const raw = (await Bun.file('dist/.client.body.js').text()).trim();
 // Shape: "use strict";\nvar NAME = (() => {\n ...return exports; })();
 const assignment = raw.match(/var\s+__dshXMagpieCore\s*=\s*\(\(\) => \{([\s\S]*)\}\)\(\);$/);
 if (!assignment) throw new Error('unexpected esbuild IIFE envelope');
@@ -38,9 +40,9 @@ ${body}
 	},
 });
 `;
-await Bun.write('client.js', client);
-await $`rm .client.body.js`.throws(true);
+await Bun.write('dist/client.js', client);
+await $`rm dist/.client.body.js`.throws(true);
 
-await $`bunx tsc --emitDeclarationOnly --declaration --declarationMap --outDir lib/types --ignoreConfig --strict --target es2022 --moduleResolution bundler --module esnext --skipLibCheck --types bun src/index.ts`.throws(true);
+await $`bunx tsc --emitDeclarationOnly --declaration --declarationMap --outDir dist/types --ignoreConfig --strict --target es2022 --moduleResolution bundler --module esnext --skipLibCheck --types bun src/index.ts`.throws(true);
 
-console.log('build: index.js + client.js + lib/types ✔');
+console.log('build: dist/index.js + dist/client.js + dist/types ✔');
