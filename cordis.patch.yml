@@ -5,5 +5,5 @@
         gatewayUrl: http://127.0.0.1:3425
         routeName: magpie
         credentialRef: MAGPIE_GATEWAY_KEY
-        api: openai-completions
+        api: openai-responses
         modelOverrides: {}

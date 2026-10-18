@@ -22,15 +22,17 @@
 
 export const name = 'magpie-sync';
 
-export const inject = ['webServer', 'configEditor', 'credentials', 'tools'];
+export const inject = ['webServer', 'configEditor', 'credentials'];
 
 const DEFAULTS = {
 	gatewayUrl: 'http://127.0.0.1:3425',
 	routeName: 'magpie',
 	credentialRef: 'MAGPIE_GATEWAY_KEY',
-	api: 'openai-completions',
+	api: 'openai-responses',
 	modelOverrides: {},
 };
+
+const APIS = new Set(['openai-completions', 'openai-responses', 'anthropic-messages']);
 
 const ROUTE_PREFIX = '/dsh-magpie-sync';
 const LLM_PI_AI_ID = 'llm-pi-ai';
@@ -159,7 +161,8 @@ function candidateRoute(cfg, models) {
 	return {
 		displayName: 'Magpie',
 		api: cfg.api,
-		baseURL: `${cfg.gatewayUrl}/v1`,
+		// magpie speaks Messages at the gateway root and OpenAI dialects under /v1.
+		baseURL: cfg.api === 'anthropic-messages' ? cfg.gatewayUrl : `${cfg.gatewayUrl}/v1`,
 		apiKeyEnv: cfg.credentialRef,
 		models,
 	};
@@ -309,6 +312,58 @@ async function storeKey(ctx, cfg, value) {
 	return { ok: true, credentialRef: cfg.credentialRef };
 }
 
+/** Validate and apply settings-page config edits onto this plugin's own row. */
+function normalizeConfigPatch(body) {
+	const updates = {};
+	if (body.gatewayUrl !== undefined) {
+		if (typeof body.gatewayUrl !== 'string') return { error: 'gatewayUrl must be a string' };
+		let parsed;
+		try {
+			parsed = new URL(body.gatewayUrl);
+		} catch {
+			return { error: 'gatewayUrl must be an absolute http(s) URL' };
+		}
+		if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+			return { error: 'gatewayUrl must be http(s)' };
+		}
+		updates.gatewayUrl = body.gatewayUrl.replace(/\/+$/, '');
+	}
+	if (body.routeName !== undefined) {
+		if (typeof body.routeName !== 'string' || !/^[a-z][a-z0-9-]*$/.test(body.routeName)) {
+			return { error: 'routeName must be a lowercase hyphenated identifier' };
+		}
+		updates.routeName = body.routeName;
+	}
+	if (body.credentialRef !== undefined) {
+		if (typeof body.credentialRef !== 'string' || !/^[A-Z][A-Z0-9_]*$/.test(body.credentialRef)) {
+			return { error: 'credentialRef must be an UPPER_CASE name' };
+		}
+		updates.credentialRef = body.credentialRef;
+	}
+	if (body.api !== undefined) {
+		if (!APIS.has(body.api)) {
+			return { error: 'api must be one of openai-completions, openai-responses, anthropic-messages' };
+		}
+		updates.api = body.api;
+	}
+	return { updates };
+}
+
+async function updateConfig(ctx, body) {
+	const check = normalizeConfigPatch(body ?? {});
+	if (check.error) return { error: check.error };
+	if (Object.keys(check.updates).length === 0) return { error: 'no config fields to update' };
+	const entryId = (entry) => entry?.options?.id ?? entry?.id;
+	const entry = ctx.configEditor.entries().find((candidate) => entryId(candidate) === name);
+	if (!entry) return { error: `the "${name}" row is not editable in this profile` };
+	await ctx.configEditor.edit(entry, (current, inherited) => ({
+		...(inherited ?? {}),
+		...(current ?? {}),
+		...check.updates,
+	}));
+	return { ok: true, applied: check.updates };
+}
+
 /** @returns {import('@deepseek-ai/cordis').Cleanup} */
 export function apply(ctx, config) {
 	const json = (res, status, body) => {
@@ -355,6 +410,10 @@ export function apply(ctx, config) {
 				const body = await readBody(req);
 				return json(res, 200, await storeKey(ctx, readConfig(config), body.value));
 			}
+			if (req.method === 'POST' && action === '/config') {
+				const body = await readBody(req);
+				return json(res, 200, await updateConfig(ctx, body));
+			}
 			if (req.method === 'POST' && action === '/remove') {
 				return json(res, 200, await removeSync(ctx, readConfig(config)));
 			}
@@ -365,142 +424,4 @@ export function apply(ctx, config) {
 	};
 
 	ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: ROUTE_PREFIX, handler }), 'magpie-sync/routes');
-
-	ctx.effect(
-		() =>
-			ctx.tools.register({
-				name: 'magpie_sync',
-				description:
-					'Sync the model catalog of the configured magpie gateway into the llm-pi-ai provider route. ' +
-					'action "plan" fetches the gateway and returns the field-level diff without writing; ' +
-					'action "apply" re-derives it and writes the route through the config editor. ' +
-					'Read-only plan first; apply only on an explicit user request.',
-				parameters: {
-					action: {
-						type: 'string',
-						required: true,
-						enum: ['plan', 'apply'],
-						description: '"plan" previews the diff; "apply" writes it into llm-pi-ai.',
-					},
-				},
-				output: {
-					schema: {
-						type: 'object',
-						additionalProperties: false,
-						properties: {
-							ok: { type: 'boolean' },
-							error: { type: 'string' },
-							gatewayUrl: { type: 'string' },
-							routeName: { type: 'string' },
-							routePresent: { type: 'boolean' },
-							modelCount: { type: 'number' },
-							written: { type: 'number' },
-							diff: {
-								type: 'object',
-								additionalProperties: false,
-								properties: {
-									route: {
-										type: 'array',
-										items: {
-											type: 'object',
-											additionalProperties: false,
-											properties: {
-												field: { type: 'string' },
-												from: { type: 'string' },
-												to: { type: 'string' },
-											},
-										},
-									},
-									added: { type: 'array', items: { type: 'string' } },
-									removed: { type: 'array', items: { type: 'string' } },
-									changed: {
-										type: 'array',
-										items: {
-											type: 'object',
-											additionalProperties: false,
-											properties: {
-												id: { type: 'string' },
-												fields: {
-													type: 'array',
-													items: {
-														type: 'object',
-														additionalProperties: false,
-														properties: {
-															field: { type: 'string' },
-															from: { type: 'string' },
-															to: { type: 'string' },
-														},
-													},
-												},
-											},
-										},
-									},
-									unchanged: { type: 'number' },
-								},
-							},
-						},
-					},
-					render: renderToolResult,
-				},
-				execute: async (args) => {
-					const cfg = readConfig(config);
-					let result;
-					if (args?.action === 'apply') result = await applySync(ctx, cfg);
-					else if (args?.action === 'plan') result = await planSync(ctx, cfg);
-					else return { error: 'action must be "plan" or "apply"' };
-					return projectToolResult(result);
-				},
-			}),
-		'magpie-sync/tool',
-	);
-}
-
-/** Tool results carry a string-only diff shape (tool output schema is
- * string-typed); the HTTP surface keeps the raw JSON values. */
-function fmtDiffValue(value) {
-	if (value === null || value === undefined) return '(not set)';
-	if (typeof value === 'object') return JSON.stringify(value);
-	return String(value);
-}
-
-function projectToolResult(result) {
-	if (!result?.diff) return result;
-	const field = (change) => ({
-		field: change.field,
-		from: fmtDiffValue(change.from),
-		to: fmtDiffValue(change.to),
-	});
-	return {
-		...result,
-		diff: {
-			route: result.diff.route.map(field),
-			added: result.diff.added,
-			removed: result.diff.removed,
-			changed: result.diff.changed.map((model) => ({
-				id: model.id,
-				fields: model.fields.map(field),
-			})),
-			unchanged: result.diff.unchanged,
-		},
-	};
-}
-
-function renderToolResult(args, value) {
-	if (!value || value.error) return [{ type: 'text', text: `magpie_sync ${args?.action}: ${value?.error ?? 'failed'}` }];
-	const diff = value.diff;
-	const changes = diff.added.length + diff.removed.length + diff.changed.length + diff.route.length;
-	const lines = [`magpie_sync ${args.action}: ${value.routeName} route, ${value.modelCount} model(s), ${changes} change(s)`];
-	if (diff.route.length > 0) {
-		lines.push('route fields:');
-		for (const change of diff.route) lines.push(`  ${change.field}: ${change.from} -> ${change.to}`);
-	}
-	if (diff.added.length > 0) lines.push(`added: ${diff.added.join(', ')}`);
-	if (diff.removed.length > 0) lines.push(`removed: ${diff.removed.join(', ')}`);
-	for (const model of diff.changed) {
-		lines.push(`changed ${model.id}:`);
-		for (const field of model.fields) lines.push(`  ${field.field}: ${field.from} -> ${field.to}`);
-	}
-	lines.push(`unchanged: ${diff.unchanged}`);
-	if (args.action === 'apply' && value.ok) lines.push(`written to llm-pi-ai: ${value.written} model(s)`);
-	return [{ type: 'text', text: lines.join('\n') }];
 }

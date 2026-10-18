@@ -29,6 +29,11 @@ window.__ModuleLoader__.load({
 				keySave: 'Save key',
 				keySaved: 'Key stored.',
 				keyHint: 'The key goes into dsh\u2019s credential store as a reference; config files never hold it.',
+				apiLabel: 'Protocol',
+				saveConfig: 'Save settings',
+				configSaved: 'Settings saved.',
+				configHint: 'Saved into this profile\u2019s patch; modelOverrides stays a patch-file field.',
+				configLoading: 'Saving\u2026',
 				removeRoute: 'Remove route',
 				removeLoading: 'Removing\u2026',
 				removed: 'Route removed.',
@@ -65,6 +70,11 @@ window.__ModuleLoader__.load({
 				keySave: '保存密钥',
 				keySaved: '密钥已存入。',
 				keyHint: '密钥以引用形式存入 dsh 凭据存储,配置文件中不保存本体。',
+				apiLabel: '协议',
+				saveConfig: '保存设置',
+				configSaved: '设置已保存。',
+				configHint: '保存写入本 profile 的 patch(cordis.patch.yml);modelOverrides 仅支持在 patch 文件中修改。',
+				configLoading: '正在保存…',
 				removeRoute: '移除路由',
 				removeLoading: '正在移除…',
 				removed: '路由已移除。',
@@ -144,6 +154,12 @@ window.__ModuleLoader__.load({
   border: 1px solid var(--dsw-alias-border-l1); border-radius: 8px; padding: 6px 10px;
   color: var(--dsw-alias-label-primary); font-size: 13px; }
 .dms-key input:focus { outline: none; border-color: var(--dsw-alias-brand-primary); }
+.dms-input { background: var(--dsw-alias-bg-layer-2); border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px; padding: 5px 9px; color: var(--dsw-alias-label-primary);
+  font-size: 12.5px; font-family: ui-monospace, monospace; }
+.dms-input:focus { outline: none; border-color: var(--dsw-alias-brand-primary); }
+.dms-input.grow { flex: 1 1 240px; min-width: 200px; }
+select.dms-input { font-family: inherit; }
 .dms-actions { display: flex; gap: 8px; align-items: center; }
 .dms-btn { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary);
   border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; padding: 6px 14px;
@@ -304,15 +320,27 @@ window.__ModuleLoader__.load({
 			const [state, setState] = useState(null);
 			const [stateError, setStateError] = useState(null);
 			const [plan, setPlan] = useState(null);
-			const [busy, setBusy] = useState(null); // null | 'plan' | 'apply'
+			const [busy, setBusy] = useState(null); // null | 'plan' | 'apply' | 'key' | 'config' | 'remove'
 			const [error, setError] = useState(null);
 			const [notice, setNotice] = useState(null);
 			const [keyValue, setKeyValue] = useState('');
+			const [form, setForm] = useState(null);
 
-			const refreshState = useCallback(async () => {
+			const refreshState = useCallback(async (resyncForm) => {
 				try {
 					setStateError(null);
-					setState(await call('/state'));
+					const next = await call('/state');
+					setState(next);
+					setForm((prev) =>
+						resyncForm || prev === null
+							? {
+									gatewayUrl: next.gatewayUrl,
+									routeName: next.routeName,
+									credentialRef: next.credentialRef,
+									api: next.api,
+								}
+							: prev,
+					);
 				} catch (err) {
 					setStateError(err?.message ?? String(err));
 				}
@@ -388,6 +416,22 @@ window.__ModuleLoader__.load({
 				}
 			}, [refreshState, t]);
 
+			const saveConfig = useCallback(async () => {
+				setBusy('config');
+				setError(null);
+				setNotice(null);
+				try {
+					await call('/config', form);
+					setNotice(t('configSaved'));
+					setPlan(null);
+					await refreshState(true);
+				} catch (err) {
+					setError(err?.message ?? String(err));
+				} finally {
+					setBusy(null);
+				}
+			}, [form, refreshState, t]);
+
 			const hasChanges =
 				plan &&
 				plan.diff &&
@@ -407,7 +451,7 @@ window.__ModuleLoader__.load({
 							h('span', { className: 'dms-error' }, `${t('stateError')}: ${stateError}`),
 							h('button', { className: 'dms-btn', onClick: refreshState }, t('retry')),
 						)
-					: state
+					: state && form
 						? h(
 								'div',
 								{ className: 'dms-card' },
@@ -415,14 +459,36 @@ window.__ModuleLoader__.load({
 									'div',
 									{ className: 'dms-row' },
 									h('span', { className: 'dms-k' }, t('gateway')),
-									h('span', { className: 'dms-code' }, state.gatewayUrl),
+									h('input', {
+										className: 'dms-input grow',
+										value: form.gatewayUrl,
+										'aria-label': t('gateway'),
+										onChange: (event) => setForm({ ...form, gatewayUrl: event.target.value }),
+									}),
 									h(Dot, { on: state.gatewayMounted === true }),
 								),
 								h(
 									'div',
 									{ className: 'dms-row' },
 									h('span', { className: 'dms-k' }, t('route')),
-									h('span', { className: 'dms-code' }, `${state.routeName} (${state.api})`),
+									h('input', {
+										className: 'dms-input',
+										value: form.routeName,
+										'aria-label': t('route'),
+										onChange: (event) => setForm({ ...form, routeName: event.target.value }),
+									}),
+									h(
+										'select',
+										{
+											className: 'dms-input',
+											value: form.api,
+											'aria-label': t('apiLabel'),
+											onChange: (event) => setForm({ ...form, api: event.target.value }),
+										},
+										['openai-responses', 'openai-completions', 'anthropic-messages'].map((value) =>
+											h('option', { key: value, value }, value),
+										),
+									),
 									h(Dot, { on: state.routePresent === true }),
 									state.routePresent
 										? h('span', { className: 'dms-note' }, `${state.routeModelCount}`)
@@ -432,13 +498,32 @@ window.__ModuleLoader__.load({
 									'div',
 									{ className: 'dms-row' },
 									h('span', { className: 'dms-k' }, t('credential')),
-									h('span', { className: 'dms-code' }, state.credentialRef),
+									h('input', {
+										className: 'dms-input',
+										value: form.credentialRef,
+										'aria-label': t('credential'),
+										onChange: (event) => setForm({ ...form, credentialRef: event.target.value }),
+									}),
 									h(Dot, { on: state.hasCredential === true }),
 									h(
 										'span',
 										{ className: 'dms-note' },
 										state.hasCredential ? t('keyStored') : t('keyMissing'),
 									),
+								),
+								h(
+									'div',
+									{ className: 'dms-key' },
+									h(
+										'button',
+										{
+											className: 'dms-btn',
+											disabled: busy !== null,
+											onClick: saveConfig,
+										},
+										busy === 'config' ? t('configLoading') : t('saveConfig'),
+									),
+									h('span', { className: 'dms-hint' }, t('configHint')),
 								),
 								h(
 									'div',
