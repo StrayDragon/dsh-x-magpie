@@ -22,7 +22,7 @@
 
 ## 这是什么
 
-[dsh](https://github.com/deepseek-ai)(DeepSeek Harness)插件:把运行中的 [magpie](https://usemagpie.ai) 网关的模型目录,同步为 dsh 模型页里的一个供应商路由。同步后,dsh 的模型选择器列出 magpie 服务的全部模型,模型上下文与输出上限取 magpie 已知数值,不再逐个手填 `contextWindow` / `maxTokens`。
+[dsh](https://github.com/deepseek-ai/deepseek-harness)(DeepSeek Harness)插件:把运行中的 [magpie](https://github.com/yetone/magpie) 网关的模型目录,同步为 dsh 模型页里的一个供应商路由。同步后,dsh 的模型选择器列出 magpie 服务的全部模型,模型上下文与输出上限取 magpie 已知数值,不再逐个手填 `contextWindow` / `maxTokens`。
 
 每次同步分三步:
 
@@ -198,15 +198,6 @@ host 半注入 3 个 dsh 服务:`webServer`(同源 HTTP)、`configEditor`(经 Lo
 - 0.5.x 显示名可配置;模型勾选列表按供应商分组,支持模糊搜索;单一 ⟳ 按钮,其余改动自动应用,失败保留上一次路由。
 - 0.3–0.4 模型勾选与自动同步;协议默认 `openai-responses`;设置页直接改配置。
 - 0.1–0.2 首个可用版本:plan / apply 两步同步,字段级差异展示。
-
-## English
-
-A [DeepSeek Harness](https://github.com/deepseek-ai) plugin that syncs the model catalog of a running [magpie](https://usemagpie.ai) gateway into one dsh `llm-pi-ai` provider route, with a field-level diff before any write.
-
-1. Grab the prebuilt `.tgz` from [Releases](https://github.com/StrayDragon/dsh-x-magpie/releases) and run `dsh plugin --profile <name> add ./dsh-x-magpie-<version>.tgz` — no build-step approval needed. Alternatively clone and `just build`, then install the directory.
-2. Hard-refresh the browser page, then open Settings → Magpie model sync.
-
-The settings page handles the rest: gateway URL and key, per-model selection (all selected by default), protocol, and display name. Edits apply automatically; a failed sync keeps the previous route. Development: `just` lists every task, `just check` mirrors CI, and pushing a `v*` tag publishes a release tarball. Field mapping and details: see the Chinese sections above. The settings UI is bilingual (English / 简体中文).
 
 ## 许可证
 
