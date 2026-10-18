@@ -19,8 +19,7 @@ A [DeepSeek Harness](https://github.com/deepseek-ai) (dsh) plugin that pulls the
 
 | magpie `/v1/models` | llm-pi-ai model entry |
 | --- | --- |
-| `id` | `id` |
-| `display_name` | `name` |
+| `id` | `id` **and** `name` (the id doubles as the display name; `modelOverrides.name` may rename) |
 | `context_window` | `contextWindow` (omitted when absent) |
 | `max_output_tokens` | `maxTokens` (omitted when absent) |
 | `modalities.input` | `input` (filtered to text/image/audio/video/pdf) |
@@ -58,8 +57,9 @@ The gateway key itself is entered on the plugin's Settings page and stored in ds
 
 Settings → **Magpie model sync**:
 
-1. **Pull now** — fetches the gateway, shows added/removed/changed models and route-field changes.
-2. **Apply** — writes the route (button enabled only when the diff is non-empty).
+1. **Refresh (⟳)** — pulls the catalog, refreshes the model checklist, and syncs the route in one step.
+2. **Everything else self-applies**: config edits, the stored key, and the model selection are debounced, persisted, and written automatically. A failed apply keeps the previous route.
+3. **Model selection** — every model is checked by default; uncheck the ones to leave out of the route (persisted as `exclude`).
 
 ### Coexistence notes
 
@@ -84,8 +84,7 @@ Settings → **Magpie model sync**:
 
 | magpie `/v1/models` | llm-pi-ai 模型条目 |
 | --- | --- |
-| `id` | `id` |
-| `display_name` | `name` |
+| `id` | `id` **兼** `name`(显示名直接用 id;`modelOverrides.name` 可改名) |
 | `context_window` | `contextWindow`(缺失则不写) |
 | `max_output_tokens` | `maxTokens`(缺失则不写) |
 | `modalities.input` | `input`(过滤为 text/image/audio/video/pdf) |
@@ -115,8 +114,9 @@ bundle 插入一行(`magpie-sync`);要求 profile 已挂载 `llm-pi-ai`(官方�
 
 设置 → **Magpie 模型同步**:
 
-1. **同步拉取** —— 拉取网关,展示新增/移除/变更模型与路由字段变化。
-2. **应用** —— 写入路由(仅当 diff 非空时可用)。
+1. **刷新(⟳)** —— 一步完成:拉取目录、刷新模型勾选列表并同步路由。
+2. **其余全自动**:配置修改、存密钥、勾选变动都会自动持久化并写入;失败时保留上一次路由。
+3. **模型勾选** —— 默认全选;取消勾选的模型不写入路由(持久化为 `exclude`)。
 
 ### 依赖面
 

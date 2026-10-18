@@ -30,6 +30,7 @@ const DEFAULTS = {
 	credentialRef: 'MAGPIE_GATEWAY_KEY',
 	api: 'openai-responses',
 	modelOverrides: {},
+	exclude: [],
 };
 
 const APIS = new Set(['openai-completions', 'openai-responses', 'anthropic-messages']);
@@ -57,6 +58,7 @@ function readConfig(config) {
 		...raw,
 		gatewayUrl: String(raw.gatewayUrl).replace(/\/+$/, ''),
 		modelOverrides: raw.modelOverrides && typeof raw.modelOverrides === 'object' ? raw.modelOverrides : {},
+		exclude: Array.isArray(raw.exclude) ? [...new Set(raw.exclude.filter((id) => typeof id === 'string'))] : [],
 	};
 }
 
@@ -93,7 +95,9 @@ function mapModel(row, overrides) {
 	const ov = overrides[row.id] && typeof overrides[row.id] === 'object' ? overrides[row.id] : {};
 	const model = { id: row.id };
 
-	const name = ov.name !== undefined ? ov.name : (row.display_name ?? row.name);
+	// The id doubles as the display name, so a dsh selector shows the same
+	// string it sends; modelOverrides may still rename explicitly.
+	const name = ov.name !== undefined ? ov.name : row.id;
 	if (typeof name === 'string' && name !== '') model.name = name;
 
 	const contextWindow = ov.contextWindow !== undefined ? ov.contextWindow : num(row.context_window ?? row.context_length);
@@ -223,24 +227,30 @@ async function planSync(ctx, cfg) {
 	const fetched = await fetchModels(ctx, cfg);
 	if (fetched.error) return fetched;
 	const seen = new Set();
-	const models = [];
+	const all = [];
 	for (const raw of fetched.rows) {
 		const model = mapModel(raw, cfg.modelOverrides);
 		if (!model || seen.has(model.id)) continue;
 		seen.add(model.id);
-		models.push(model);
+		all.push(model);
 	}
-	if (models.length === 0) {
-		return { error: 'the gateway listed no usable models; refusing to plan an empty route' };
+	if (all.length === 0) {
+		return { error: 'the gateway listed no usable models' };
 	}
-	const candidate = candidateRoute(cfg, models);
+	// The UI lists every model (so an excluded one can be re-selected); the
+	// candidate and its diff reflect the current selection only.
+	const selected = all.filter((model) => !cfg.exclude.includes(model.id));
+	const candidate = candidateRoute(cfg, selected);
 	const current = row.providers[cfg.routeName];
 	return {
 		gatewayUrl: cfg.gatewayUrl,
 		routeName: cfg.routeName,
 		routePresent: current !== undefined,
-		modelCount: models.length,
+		modelCount: selected.length,
+		// Light list for the selection UI; ids double as display names.
+		models: all.map((m) => ({ id: m.id, contextWindow: m.contextWindow, maxTokens: m.maxTokens })),
 		diff: diffRoute(current, candidate),
+		...(selected.length === 0 ? { warning: 'no models selected; applying would empty the route' } : {}),
 	};
 }
 
@@ -250,17 +260,18 @@ async function applySync(ctx, cfg) {
 	const fetched = await fetchModels(ctx, cfg);
 	if (fetched.error) return fetched;
 	const seen = new Set();
-	const models = [];
+	const all = [];
 	for (const raw of fetched.rows) {
 		const model = mapModel(raw, cfg.modelOverrides);
 		if (!model || seen.has(model.id)) continue;
 		seen.add(model.id);
-		models.push(model);
+		all.push(model);
 	}
-	if (models.length === 0) {
-		return { error: 'the gateway listed no usable models; refusing to write an empty route' };
+	const selected = all.filter((model) => !cfg.exclude.includes(model.id));
+	if (selected.length === 0) {
+		return { error: 'no models selected; refusing to write an empty route' };
 	}
-	const candidate = candidateRoute(cfg, models);
+	const candidate = candidateRoute(cfg, selected);
 	const before = row.providers[cfg.routeName];
 	const diff = diffRoute(before, candidate);
 	await ctx.configEditor.edit(row.entry, (current, inherited) => {
@@ -268,7 +279,7 @@ async function applySync(ctx, cfg) {
 		providers[cfg.routeName] = candidate;
 		return { ...(inherited ?? {}), ...(current ?? {}), providers };
 	});
-	return { ok: true, routeName: cfg.routeName, written: models.length, diff };
+	return { ok: true, routeName: cfg.routeName, written: selected.length, diff };
 }
 
 /** Remove the route this plugin owns. Other routes are never touched. */
@@ -297,6 +308,7 @@ async function readState(ctx, cfg) {
 		routeName: cfg.routeName,
 		credentialRef: cfg.credentialRef,
 		api: cfg.api,
+		exclude: cfg.exclude,
 		hasCredential,
 		gatewayMounted: row.error ? false : true,
 		gatewayMessage: row.error ?? null,
@@ -346,6 +358,16 @@ function normalizeConfigPatch(body) {
 			return { error: 'api must be one of openai-completions, openai-responses, anthropic-messages' };
 		}
 		updates.api = body.api;
+	}
+	if (body.exclude !== undefined) {
+		if (
+			!Array.isArray(body.exclude) ||
+			body.exclude.some((id) => typeof id !== 'string' || id === '' || id.length > 256) ||
+			body.exclude.length > 512
+		) {
+			return { error: 'exclude must be a list of model ids (at most 512)' };
+		}
+		updates.exclude = [...new Set(body.exclude)];
 	}
 	return { updates };
 }
