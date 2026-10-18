@@ -165,7 +165,9 @@ select.dms-input { font-family: inherit; }
   text-overflow: ellipsis; white-space: nowrap; }
 .dms-model .cap { color: var(--dsw-alias-label-secondary); font-size: 11px;
   font-family: ui-monospace, monospace; flex-shrink: 0; }
-.dms-search { margin: 2px 0; }
+.dms-search { width: 100%; margin: 2px 0 4px; }
+.dms-models input[type='checkbox'] { width: 14px; height: 14px; margin: 0;
+  accent-color: var(--dsw-alias-brand-primary); flex-shrink: 0; }
 .dms-group { font-size: 11px; font-weight: 600; color: var(--dsw-alias-label-secondary);
   text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 4px 2px;
   border-top: 1px solid var(--dsw-alias-border-l1); margin-top: 4px;
@@ -500,8 +502,6 @@ select.dms-input { font-family: inherit; }
 									'aria-label': t('displayName'),
 									onChange: (event) => editField('displayName', event.target.value),
 								}),
-								h(Dot, { on: state.routePresent === true }),
-								state.routePresent ? h('span', { className: 'dms-note' }, `${state.routeModelCount}`) : null,
 							),
 							h(
 								'div',
@@ -594,7 +594,7 @@ select.dms-input { font-family: inherit; }
 								catalog.warning ? h('span', { className: 'dms-hint dms-warn' }, catalog.warning) : null,
 								h('input', {
 									type: 'search',
-									className: 'dms-input dms-search grow',
+									className: 'dms-input dms-search',
 									value: query,
 									placeholder: t('searchPlaceholder'),
 									'aria-label': t('searchPlaceholder'),
