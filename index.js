@@ -381,6 +381,64 @@ export function apply(ctx, config) {
 						description: '"plan" previews the diff; "apply" writes it into llm-pi-ai.',
 					},
 				},
+				output: {
+					schema: {
+						type: 'object',
+						additionalProperties: false,
+						properties: {
+							ok: { type: 'boolean' },
+							error: { type: 'string' },
+							gatewayUrl: { type: 'string' },
+							routeName: { type: 'string' },
+							routePresent: { type: 'boolean' },
+							modelCount: { type: 'number' },
+							written: { type: 'number' },
+							diff: {
+								type: 'object',
+								additionalProperties: false,
+								properties: {
+									route: {
+										type: 'array',
+										items: {
+											type: 'object',
+											additionalProperties: false,
+											properties: {
+												field: { type: 'string' },
+												from: {},
+												to: {},
+											},
+										},
+									},
+									added: { type: 'array', items: { type: 'string' } },
+									removed: { type: 'array', items: { type: 'string' } },
+									changed: {
+										type: 'array',
+										items: {
+											type: 'object',
+											additionalProperties: false,
+											properties: {
+												id: { type: 'string' },
+												fields: {
+													type: 'array',
+													items: {
+														type: 'object',
+														additionalProperties: false,
+														properties: {
+															field: { type: 'string' },
+															from: {},
+															to: {},
+														},
+													},
+												},
+											},
+										},
+									},
+									unchanged: { type: 'number' },
+								},
+							},
+						},
+					},
+				},
 				execute: async (args) => {
 					const cfg = readConfig(config);
 					if (args?.action === 'apply') return applySync(ctx, cfg);
