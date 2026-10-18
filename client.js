@@ -21,7 +21,6 @@ window.__ModuleLoader__.load({
 					'Nothing is written before you review the diff and press apply.',
 				gateway: 'Gateway',
 				route: 'Provider route',
-				credential: 'Gateway key',
 				keyStored: 'stored',
 				keyMissing: 'not stored',
 				keyLabel: 'Store gateway key',
@@ -34,6 +33,14 @@ window.__ModuleLoader__.load({
 				configSaved: 'Settings saved.',
 				configHint: 'Saved into this profile\u2019s patch; modelOverrides stays a patch-file field.',
 				configLoading: 'Saving\u2026',
+				advanced: 'Advanced',
+				credential: 'Credential ref',
+				credentialHint: 'Reference name of the stored key \u2014 keep the default; the key itself goes below.',
+				keyRow: 'Gateway key',
+				errGateway: 'Gateway URL must be an absolute http(s) address',
+				errRoute: 'Route name must be lowercase letters, digits and hyphens',
+				errCredential: 'Credential ref must be UPPER_CASE letters, digits and underscores \u2014 keep the default',
+				noConfigChanges: 'No setting changed.',
 				removeRoute: 'Remove route',
 				removeLoading: 'Removing\u2026',
 				removed: 'Route removed.',
@@ -62,7 +69,6 @@ window.__ModuleLoader__.load({
 					'写盘之前先核对差异,确认后才会应用。',
 				gateway: '网关',
 				route: 'Provider 路由',
-				credential: '网关密钥',
 				keyStored: '已存入',
 				keyMissing: '未存储',
 				keyLabel: '保存网关密钥',
@@ -75,6 +81,14 @@ window.__ModuleLoader__.load({
 				configSaved: '设置已保存。',
 				configHint: '保存写入本 profile 的 patch(cordis.patch.yml);modelOverrides 仅支持在 patch 文件中修改。',
 				configLoading: '正在保存…',
+				advanced: '高级',
+				credential: '凭据引用名',
+				credentialHint: '已存密钥的引用名 \u2014 保持默认即可,密钥本体填在下方。',
+				keyRow: '网关密钥',
+				errGateway: '网关地址必须是完整的 http(s) 地址',
+				errRoute: '路由名只能包含小写字母、数字和中划线',
+				errCredential: '凭据引用名只能是大写字母、数字和下划线 \u2014 保持默认即可',
+				noConfigChanges: '设置没有变化。',
 				removeRoute: '移除路由',
 				removeLoading: '正在移除…',
 				removed: '路由已移除。',
@@ -160,6 +174,9 @@ window.__ModuleLoader__.load({
 .dms-input:focus { outline: none; border-color: var(--dsw-alias-brand-primary); }
 .dms-input.grow { flex: 1 1 240px; min-width: 200px; }
 select.dms-input { font-family: inherit; }
+.dms-advanced { border: 1px dashed var(--dsw-alias-border-l1); border-radius: 8px;
+  padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+.dms-advanced summary { cursor: pointer; color: var(--dsw-alias-label-secondary); font-size: 12px; }
 .dms-actions { display: flex; gap: 8px; align-items: center; }
 .dms-btn { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary);
   border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; padding: 6px 14px;
@@ -325,22 +342,21 @@ select.dms-input { font-family: inherit; }
 			const [notice, setNotice] = useState(null);
 			const [keyValue, setKeyValue] = useState('');
 			const [form, setForm] = useState(null);
+			const [form0, setForm0] = useState(null); // values as last loaded, to diff against
 
 			const refreshState = useCallback(async (resyncForm) => {
 				try {
 					setStateError(null);
 					const next = await call('/state');
 					setState(next);
-					setForm((prev) =>
-						resyncForm || prev === null
-							? {
-									gatewayUrl: next.gatewayUrl,
-									routeName: next.routeName,
-									credentialRef: next.credentialRef,
-									api: next.api,
-								}
-							: prev,
-					);
+					const snapshot = {
+						gatewayUrl: next.gatewayUrl,
+						routeName: next.routeName,
+						credentialRef: next.credentialRef,
+						api: next.api,
+					};
+					setForm((prev) => (resyncForm || prev === null ? snapshot : prev));
+					setForm0((prev) => (resyncForm || prev === null ? snapshot : prev));
 				} catch (err) {
 					setStateError(err?.message ?? String(err));
 				}
@@ -421,7 +437,38 @@ select.dms-input { font-family: inherit; }
 				setError(null);
 				setNotice(null);
 				try {
-					await call('/config', form);
+					const VALID = {
+						gatewayUrl: (v) => {
+							try {
+								return Boolean(new URL(v)) && /^https?:/.test(new URL(v).protocol);
+							} catch {
+								return false;
+							}
+						},
+						routeName: (v) => /^[a-z][a-z0-9-]*$/.test(v),
+						credentialRef: (v) => /^[A-Z][A-Z0-9_]*$/.test(v),
+					};
+					const errText = {
+						gatewayUrl: t('errGateway'),
+						routeName: t('errRoute'),
+						credentialRef: t('errCredential'),
+					};
+					const patch = {};
+					for (const key of ['gatewayUrl', 'routeName', 'credentialRef', 'api']) {
+						if (form[key] === form0?.[key]) continue;
+						if (VALID[key] && !VALID[key](form[key])) {
+							setError(errText[key]);
+							setBusy(null);
+							return;
+						}
+						patch[key] = form[key];
+					}
+					if (Object.keys(patch).length === 0) {
+						setNotice(t('noConfigChanges'));
+						setBusy(null);
+						return;
+					}
+					await call('/config', patch);
 					setNotice(t('configSaved'));
 					setPlan(null);
 					await refreshState(true);
@@ -430,7 +477,7 @@ select.dms-input { font-family: inherit; }
 				} finally {
 					setBusy(null);
 				}
-			}, [form, refreshState, t]);
+			}, [form, form0, refreshState, t]);
 
 			const hasChanges =
 				plan &&
@@ -470,13 +517,7 @@ select.dms-input { font-family: inherit; }
 								h(
 									'div',
 									{ className: 'dms-row' },
-									h('span', { className: 'dms-k' }, t('route')),
-									h('input', {
-										className: 'dms-input',
-										value: form.routeName,
-										'aria-label': t('route'),
-										onChange: (event) => setForm({ ...form, routeName: event.target.value }),
-									}),
+									h('span', { className: 'dms-k' }, t('apiLabel')),
 									h(
 										'select',
 										{
@@ -496,29 +537,12 @@ select.dms-input { font-family: inherit; }
 								),
 								h(
 									'div',
-									{ className: 'dms-row' },
-									h('span', { className: 'dms-k' }, t('credential')),
-									h('input', {
-										className: 'dms-input',
-										value: form.credentialRef,
-										'aria-label': t('credential'),
-										onChange: (event) => setForm({ ...form, credentialRef: event.target.value }),
-									}),
-									h(Dot, { on: state.hasCredential === true }),
-									h(
-										'span',
-										{ className: 'dms-note' },
-										state.hasCredential ? t('keyStored') : t('keyMissing'),
-									),
-								),
-								h(
-									'div',
 									{ className: 'dms-key' },
 									h(
 										'button',
 										{
 											className: 'dms-btn',
-											disabled: busy !== null,
+											disabled: busy !== null || JSON.stringify(form) === JSON.stringify(form0),
 											onClick: saveConfig,
 										},
 										busy === 'config' ? t('configLoading') : t('saveConfig'),
@@ -526,19 +550,60 @@ select.dms-input { font-family: inherit; }
 									h('span', { className: 'dms-hint' }, t('configHint')),
 								),
 								h(
+									'details',
+									{ className: 'dms-advanced' },
+									h('summary', null, t('advanced')),
+									h(
+										'div',
+										{ className: 'dms-row' },
+										h('span', { className: 'dms-k' }, t('route')),
+										h('input', {
+											className: 'dms-input',
+											value: form.routeName,
+											'aria-label': t('route'),
+											onChange: (event) => setForm({ ...form, routeName: event.target.value }),
+										}),
+										h('span', { className: 'dms-hint' }, t('errRoute')),
+									),
+									h(
+										'div',
+										{ className: 'dms-row' },
+										h('span', { className: 'dms-k' }, t('credential')),
+										h('input', {
+											className: 'dms-input',
+											value: form.credentialRef,
+											'aria-label': t('credential'),
+											onChange: (event) => setForm({ ...form, credentialRef: event.target.value }),
+										}),
+									),
+									h('span', { className: 'dms-hint' }, t('credentialHint')),
+								),
+								h(
 									'div',
-									{ className: 'dms-key' },
+									{ className: 'dms-row' },
+									h('span', { className: 'dms-k' }, t('keyRow')),
 									h('input', {
 										type: 'password',
+										className: 'dms-input grow',
 										value: keyValue,
 										placeholder: t('keyPlaceholder'),
 										'aria-label': t('keyLabel'),
 										onChange: (event) => setKeyValue(event.target.value),
 									}),
+									h(Dot, { on: state.hasCredential === true }),
 									h(
 										'button',
-										{ className: 'dms-btn', disabled: busy !== null || keyValue === '', onClick: saveKey },
+										{
+											className: 'dms-btn',
+											disabled: busy !== null || keyValue === '',
+											onClick: saveKey,
+										},
 										busy === 'key' ? '\u2026' : t('keySave'),
+									),
+									h(
+										'span',
+										{ className: 'dms-note' },
+										state.hasCredential ? t('keyStored') : t('keyMissing'),
 									),
 								),
 								h('span', { className: 'dms-hint' }, t('keyHint')),
