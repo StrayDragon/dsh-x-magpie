@@ -135,19 +135,39 @@ client 模块在页面加载时注入。安装、更新或重新启用插件后,
 **协议怎么选?**
 magpie 网关同时支持三种协议。`openai-responses` 与 `openai-completions` 走`{网关}/v1`,`anthropic-messages` 走网关根路径;插件按协议自动拼接,不需要手动改地址。
 
+## 开发
+
+仓库以 TypeScript 维护,`src/` 是唯一事实来源;包根的 `index.js` / `client.js` 是构建产物,不要手改。
+
+```sh
+bun install        # devDependencies: typescript / tsup(esbuild) / @types
+bun run typecheck  # strict tsc,noEmit
+bun run build      # tsup + esbuild → index.js / client.js;tsc → lib/*.d.ts
+bun run test:smoke # 内置冒烟:mock 网关上的 plan/apply/exclude 全链路断言
+```
+
+CI(GitHub Actions)在每次 push 与 PR 上依次运行以上四步,并检查构建产物已提交、无漂移。发布即 `git push`;改代码后本地验证与 CI 相同。
+
 ## 项目结构
 
 ```text
 dsh-x-magpie/
+├── src/                # TypeScript 源(唯一事实来源)
+│   ├── index.ts        # host 半:拉取 / 映射 / 差异 / 写入,同源 HTTP 路由
+│   ├── client.ts       # client 半:设置页 UI,注册于 settings.section
+│   ├── shared.ts       # 两半共享的类型与常量
+│   └── dsh-client-env.d.ts
+├── scripts/build.ts    # 构建入口;scripts/smoke.mjs 行为冒烟
+├── index.js            # 构建产物:host 半 ESM
+├── client.js           # 构建产物:client 半 loader 注册脚本
+├── lib/types/          # 构建产物:声明文件
 ├── package.json        # bundle 清单:dsh.bundle.patch + dsh.client 声明
 ├── cordis.patch.yml    # 插入 dsh-x-magpie 行,携带默认 config
-├── index.js            # host 半:拉取 / 映射 / 差异 / 写入,同源 HTTP 路由
-├── client.js           # client 半:设置页 UI,注册于 settings.section
 ├── locale/*.json       # 插件名与描述(英 / 简体中文)
 └── icon.svg            # magpie 鹊鸟 + 同步徽标
 ```
 
-host 半注入 3 个 dsh 服务:`webServer`(同源 HTTP)、`configEditor`(经 Loader 路径持久化)、`credentials`(密钥存储)。没有 npm 依赖,没有构建步骤。
+host 半注入 3 个 dsh 服务:`webServer`(同源 HTTP)、`configEditor`(经 Loader 路径持久化)、`credentials`(密钥存储)。运行时零 npm 依赖;TypeScript 工具链仅 devDependencies,不进入安装包。
 
 ## 更新日志
 

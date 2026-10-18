@@ -2,5 +2,5 @@ node_modules/
 *.log
 .DS_Store
 *.tsbuildinfo
+.client.body.js
 npm-debug.log*
-.editorconfig
