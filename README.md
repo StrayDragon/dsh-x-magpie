@@ -9,7 +9,7 @@
 拉取 magpie 网关的模型列表,写入 dsh 的 llm-pi-ai 供应商路由。
 写盘之前先展示逐字段差异,确认后才应用。
 
-[![版本](https://img.shields.io/badge/版本-0.6.0-1f2430)](#更新日志)
+[![版本](https://img.shields.io/badge/版本-0.7.0-1f2430)](#更新日志)
 [![协议](https://img.shields.io/badge/协议-MIT-1f2430)](#许可证)
 [![dsh](https://img.shields.io/badge/DeepSeek_Harness-插件-1f2430)](https://github.com/deepseek-ai)
 [![magpie](https://img.shields.io/badge/magpie-网关同步-1f2430)](https://usemagpie.ai)
@@ -171,6 +171,7 @@ host 半注入 3 个 dsh 服务:`webServer`(同源 HTTP)、`configEditor`(经 Lo
 
 ## 更新日志
 
+- 0.7.0 TypeScript 重写(`src/` 为源,strict tsc)与 CI 质量门;运行时行为与配置面不变。
 - 0.6.0 项目更名 `dsh-x-magpie`;同步徽标箭头沿弧线切线方向。
 - 0.5.x 显示名可配置;模型勾选列表按供应商分组,支持模糊搜索;单一 ⟳ 按钮,其余改动自动应用,失败保留上一次路由。
 - 0.3–0.4 模型勾选与自动同步;协议默认 `openai-responses`;设置页直接改配置。
